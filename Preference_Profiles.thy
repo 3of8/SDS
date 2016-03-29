@@ -23,10 +23,17 @@ type_synonym ('agent, 'alt) pref_profile = "'agent \<Rightarrow> 'alt relation"
 
 locale pref_profile_wf =
   fixes agents :: "'agent set" and alts :: "'alt set" and R :: "('agent, 'alt) pref_profile"
-  assumes nonempty_agents [simp]: "agents \<noteq> {}"
+  assumes nonempty_agents [simp]: "agents \<noteq> {}" and nonempty_alts [simp]: "alts \<noteq> {}"
   assumes prefs_wf [simp]: "i \<in> agents \<Longrightarrow> finite_complete_preorder_on alts (R i)"
   assumes prefs_undefined [simp]: "i \<notin> agents \<Longrightarrow> \<not>R i x y"
 begin
+
+lemma finite_alts [simp]: "finite alts"
+proof -
+  from nonempty_agents obtain i where "i \<in> agents" by blast
+  then interpret finite_complete_preorder_on alts "R i" by simp
+  show ?thesis by fact
+qed
 
 lemma prefs_undefined': "i \<notin> agents \<Longrightarrow> R i = (\<lambda>_ _. False)"
   by (intro ext prefs_undefined) simp_all
@@ -211,20 +218,43 @@ qed
 end
 
 
+subsection \<open>Preferred alternatives\<close>
+
+definition preferred_alts :: "'alt relation \<Rightarrow> 'alt \<Rightarrow> 'alt set" where
+  "preferred_alts R x = {y. y \<succeq>[R] x}"
+
+lemma (in preorder_on) preferred_alts_altdef:
+  "preferred_alts le x = {y\<in>carrier. y \<succeq>[le] x}"
+  by (auto simp: preferred_alts_def intro: not_outside)
+
+context pref_profile_wf
+begin
+
+lemma preferred_alts_subset_alts: "preferred_alts (R i) x \<subseteq> alts" (is ?A)
+  and finite_preferred_alts [simp,intro!]: "finite (preferred_alts (R i) x)" (is ?B)
+proof -
+  have "?A \<and> ?B"
+  proof (cases "i \<in> agents")
+    assume "i \<in> agents"
+    then interpret complete_preorder_on alts "R i" by simp
+    have "preferred_alts (R i) x \<subseteq> alts" using not_outside
+      by (auto simp: preferred_alts_def)
+    thus ?thesis by (auto dest: finite_subset)
+  qed (auto simp: preferred_alts_def)
+  thus ?A ?B by blast+
+qed
+
+lemma preferred_alts_altdef: 
+  "i \<in> agents \<Longrightarrow> preferred_alts (R i) x = {y\<in>alts. y \<succeq>[R i] x}"
+  by (simp add: preorder_on.preferred_alts_altdef)  
+
+end
+
+
 subsection \<open>Favourite alternatives\<close>
 
 definition favorites :: "('agent, 'alt) pref_profile \<Rightarrow> 'agent \<Rightarrow> 'alt set" where
   "favorites R i = Max_wrt (R i)"
-
-lemma (in pref_profile_wf) favorites_altdef:
-  "favorites R i = Max_wrt_among (R i) alts"
-proof (cases "i \<in> agents")
-  assume "i \<in> agents"
-  with assms interpret complete_preorder_on alts "R i" by simp
-  show ?thesis 
-    by (simp add: favorites_def Max_wrt_complete_preorder Max_wrt_among_complete_preorder)
-qed (insert assms, simp_all add: favorites_def Max_wrt_def Max_wrt_among_def pref_profile_wf_def)
-
 
 (* TODO Move *)
 definition is_singleton :: "'a set \<Rightarrow> bool" where
@@ -245,6 +275,88 @@ lemma is_singleton_the_elem: "is_singleton A \<longleftrightarrow> A = {the_elem
 
 definition favorite :: "('agent, 'alt) pref_profile \<Rightarrow> 'agent \<Rightarrow> 'alt" where
   "favorite R i = the_elem (favorites R i)"
+
+definition has_unique_favorites :: "('agent, 'alt) pref_profile \<Rightarrow> bool" where
+  "has_unique_favorites R \<longleftrightarrow> (\<forall>i. favorites R i = {} \<or> is_singleton (favorites R i))"
+
+context pref_profile_wf
+begin
+
+lemma favorites_altdef:
+  "favorites R i = Max_wrt_among (R i) alts"
+proof (cases "i \<in> agents")
+  assume "i \<in> agents"
+  with assms interpret complete_preorder_on alts "R i" by simp
+  show ?thesis 
+    by (simp add: favorites_def Max_wrt_complete_preorder Max_wrt_among_complete_preorder)
+qed (insert assms, simp_all add: favorites_def Max_wrt_def Max_wrt_among_def pref_profile_wf_def)
+
+lemma favorites_no_agent [simp]: "i \<notin> agents \<Longrightarrow> favorites R i = {}"
+  by (auto simp: favorites_def Max_wrt_def Max_wrt_among_def)
+
+lemma favorites_altdef':
+  "favorites R i = {x\<in>alts. \<forall>y\<in>alts. x \<succeq>[R i] y}"
+proof (cases "i \<in> agents")
+  assume "i \<in> agents"
+  then interpret finite_complete_preorder_on alts "R i" by simp
+  show ?thesis using Max_wrt_among_nonempty[of alts] Max_wrt_among_subset[of alts]
+    by (auto simp: favorites_altdef Max_wrt_among_complete_preorder)
+qed simp_all
+
+lemma favorites_subset_alts: "favorites R i \<subseteq> alts"
+  using assms by (auto simp: favorites_altdef')
+
+lemma finite_favorites [simp, intro]: "finite (favorites R i)"
+  using favorites_subset_alts finite_alts  by (rule finite_subset)
+
+lemma favorites_nonempty: "i \<in> agents \<Longrightarrow> favorites R i \<noteq> {}"
+proof -
+  assume "i \<in> agents"
+  then interpret finite_complete_preorder_on alts "R i" by simp
+  show ?thesis unfolding favorites_def by (intro Max_wrt_nonempty) simp_all
+qed
+
+lemma favorites_permute: 
+  assumes i: "i \<in> agents" and perm: "\<sigma> permutes alts"
+  shows   "favorites (permute_profile \<sigma> R) i = \<sigma> ` favorites R i"
+proof -
+  from i interpret finite_complete_preorder_on alts "R i" by simp
+  from perm show ?thesis
+  unfolding favorites_def
+    by (subst Max_wrt_map_relation_bij)
+       (simp_all add: permute_profile_def map_relation_def permutes_bij)
+qed
+
+lemma has_unique_favorites_altdef:
+  "has_unique_favorites R \<longleftrightarrow> (\<forall>i\<in>agents. is_singleton (favorites R i))"
+proof safe
+  fix i assume "has_unique_favorites R" "i \<in> agents"
+  thus "is_singleton (favorites R i)" using favorites_nonempty[of i]
+    by (auto simp: has_unique_favorites_def)
+next
+  assume "\<forall>i\<in>agents. is_singleton (favorites R i)"
+  hence "is_singleton (favorites R i) \<or> favorites R i = {}" for i
+    by (cases "i \<in> agents") (simp add: favorites_nonempty, simp add: favorites_altdef')
+  thus "has_unique_favorites R" by (auto simp: has_unique_favorites_def)
+qed
+
+end
+
+
+locale pref_profile_unique_favorites = pref_profile_wf agents alts R
+  for agents :: "'agent set" and alts :: "'alt set" and R +
+  assumes unique_favorites': "has_unique_favorites R"
+begin
+  
+lemma unique_favorites: "i \<in> agents \<Longrightarrow> favorites R i = {favorite R i}"
+  using unique_favorites' 
+  by (auto simp: favorite_def has_unique_favorites_altdef is_singleton_the_elem)
+
+lemma favorite_in_alts: "i \<in> agents \<Longrightarrow> favorite R i \<in> alts"
+  using favorites_subset_alts[of i] by (simp add: unique_favorites)
+
+end
+
   
 
 subsection \<open>Anonymous profiles\<close>
@@ -304,12 +416,12 @@ definition prefs_from_table :: "('agent \<times> 'alt set list) list \<Rightarro
   "prefs_from_table xss = (\<lambda>i. case_option (\<lambda>_ _. False) of_weak_ranking (map_of xss i))"
 
 definition prefs_from_table_wf where
-  "prefs_from_table_wf agents alts xss \<longleftrightarrow> agents \<noteq> {} \<and> distinct (map fst xss) \<and> 
+  "prefs_from_table_wf agents alts xss \<longleftrightarrow> agents \<noteq> {} \<and> alts \<noteq> {} \<and> distinct (map fst xss) \<and> 
        set (map fst xss) = agents \<and> (\<forall>xs\<in>set (map snd xss). (\<Union>set xs) = alts \<and> 
        is_finite_weak_ranking xs)"
 
 lemma prefs_from_table_wfI:
-  assumes "agents \<noteq> {}" "distinct (map fst xss)"
+  assumes "agents \<noteq> {}" "alts \<noteq> {}" "distinct (map fst xss)"
   assumes "set (map fst xss) = agents"
   assumes "\<And>xs. xs \<in> set (map snd xss) \<Longrightarrow> (\<Union>set xs) = alts"
   assumes "\<And>xs. xs \<in> set (map snd xss) \<Longrightarrow> is_finite_weak_ranking xs"
@@ -318,7 +430,7 @@ lemma prefs_from_table_wfI:
 
 lemma prefs_from_table_wfD:
   assumes "prefs_from_table_wf agents alts xss"
-  shows "agents \<noteq> {}" "distinct (map fst xss)"
+  shows "agents \<noteq> {}" "alts \<noteq> {}" "distinct (map fst xss)"
     and "set (map fst xss) = agents"
     and "\<And>xs. xs \<in> set (map snd xss) \<Longrightarrow> (\<Union>set xs) = alts"
     and "\<And>xs. xs \<in> set (map snd xss) \<Longrightarrow> is_finite_weak_ranking xs"
@@ -431,7 +543,7 @@ proof
   (* TODO: Clean up this mess *)
   from assms have wf': "prefs_from_table_wf agents alts (map (\<lambda>(x, y). (x, map (op ` \<sigma>) y)) xss)"
     apply (intro prefs_from_table_wfI)
-    apply (simp add: prefs_from_table_wf_def)
+    apply (simp_all add: prefs_from_table_wf_def) [2]
     apply (simp add: o_def case_prod_unfold prefs_from_table_wf_def)
     apply (simp add: o_def case_prod_unfold prefs_from_table_wf_def)
     apply (simp add: o_def case_prod_unfold)
@@ -601,7 +713,7 @@ proof -
     by (simp add: agents set_map [symmetric] nth_map [symmetric] del: set_map)
   have idx_unidx: "idx (unidx i) = i" if i: "i < length xs" for i
     unfolding idx_def unidx_def using wf(1) index_nth_id[of "map fst xs" i] i
-    by (simp add: prefs_from_table_wfD(2))
+    by (simp add: prefs_from_table_wfD(3))
  
   def \<pi> \<equiv> "\<lambda>x. if x \<in> agents then (unidx \<circ> f \<circ> idx) x else x"
   def \<pi>' \<equiv> "\<lambda>x. if x \<in> agents then (unidx \<circ> inv f \<circ> idx) x else x"

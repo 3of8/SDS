@@ -27,12 +27,15 @@ lemma preferred_alts_prefs_from_table:
   shows   "preferred_alts (prefs_from_table xs i) x = 
              of_weak_ranking_Collect_ge (rev (the (map_of xs i))) x"
 proof -
+  interpret pref_profile_wf agents alts "prefs_from_table xs"
+    by (intro pref_profile_from_tableI assms)
+  from assms have [simp]: "i \<in> agents" by (auto simp: prefs_from_table_wf_def)
   have "of_weak_ranking_Collect_ge (rev (the (map_of xs i))) x = 
           Collect (of_weak_ranking (the (map_of xs i)) x)"
     by (rule eval_Collect_of_weak_ranking [symmetric])
   also from assms(2) have "the (map_of xs i) \<in> set (map snd xs)"
     by (cases "map_of xs i") (force simp: map_of_eq_None_iff dest: map_of_SomeD)+
-  from prefs_from_table_wfD(4)[OF assms(1) this]
+  from prefs_from_table_wfD(5)[OF assms(1) this]
     have "Collect (of_weak_ranking (the (map_of xs i)) x) = 
             {y\<in>alts. of_weak_ranking (the (map_of xs i)) x y}"
     by safe (force elim!: of_weak_ranking.cases)
@@ -40,7 +43,7 @@ proof -
     have "of_weak_ranking (the (map_of xs i)) = prefs_from_table xs i"
     by (subst prefs_from_table_map_of[OF assms(1)])
        (auto simp: prefs_from_table_wf_def)
-  finally show ?thesis by (simp add: of_weak_ranking_Collect_ge_def preferred_alts_def)
+  finally show ?thesis by (simp add: of_weak_ranking_Collect_ge_def preferred_alts_altdef)
 qed
 
 lemma favorites_prefs_from_table:
@@ -65,10 +68,12 @@ lemma has_unique_favorites_prefs_from_table:
   shows   "has_unique_favorites (prefs_from_table xs) = 
              list_all (\<lambda>z. is_singleton (hd (snd z))) xs"
 proof -
+  interpret pref_profile_wf agents alts "prefs_from_table xs"
+    by (intro pref_profile_from_tableI assms)
   from wf have "agents = set (map fst xs)" "distinct (map fst xs)"
     by (auto simp: prefs_from_table_wf_def)
   thus ?thesis
-    unfolding has_unique_favorites_def using assms
+    unfolding has_unique_favorites_altdef using assms
     by (auto simp: favorites_prefs_from_table list_all_iff)
 qed
 
@@ -119,14 +124,14 @@ lemma eval_prefs_from_table_aux:
           "a \<prec>[R i] b \<longleftrightarrow> prefs_from_table xs i a b \<and> \<not>prefs_from_table xs i b a"
           "anonymous_profile agents R = mset (map snd xs)"
           "agenda agents alts \<Longrightarrow> i \<in> set (map fst xs) \<Longrightarrow> 
-             agenda.preferred_alts alts (R i) x = 
+             preferred_alts (R i) x = 
              of_weak_ranking_Collect_ge (rev (the (map_of xs i))) x"
           "agenda agents alts \<Longrightarrow> i \<in> set (map fst xs) \<Longrightarrow>
              favorites R i = favorites_prefs_from_table xs i"
           "agenda agents alts \<Longrightarrow> i \<in> set (map fst xs) \<Longrightarrow>
              favorite R i = the_elem (favorites_prefs_from_table xs i)"
           "agenda agents alts \<Longrightarrow> 
-             agenda.has_unique_favorites agents R \<longleftrightarrow> list_all (\<lambda>z. is_singleton (hd (snd z))) xs"
+             has_unique_favorites R \<longleftrightarrow> list_all (\<lambda>z. is_singleton (hd (snd z))) xs"
   using assms prefs_from_table_wfD[OF assms(2)]
   by (simp_all add: strongly_preferred_def favorite_def anonymise_prefs_from_table
         agenda.preferred_alts_prefs_from_table agenda.eval_favorites_prefs_from_table

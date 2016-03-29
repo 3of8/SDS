@@ -1,8 +1,13 @@
 section \<open>Stochastic Dominance\<close>
 
 theory Stochastic_Dominance
-imports Complex_Main Probability Order_Predicates
+imports 
+  Complex_Main 
+  Probability 
+  Preference_Profiles
 begin
+
+(* TODO MOVE *)
 
 (* linordered_nonzero_semiring in isabelle-dev *)
 lemma indicator_leI:
@@ -15,6 +20,8 @@ lemma le_diff_iff': "a \<le> c \<Longrightarrow> b \<le> c \<Longrightarrow> c -
 lemma setsum_lessThan_Suc_shift:
   "(\<Sum>i<Suc n. f i) = f 0 + (\<Sum>i<n. f (Suc i))"
   by (induction n) (simp_all add: add_ac)
+
+(* END TODO *)
 
 
 subsection \<open>Definition of Lotteries\<close>
@@ -78,6 +85,88 @@ lemma SD_refl' [simp]: "p \<preceq>[SD(le)] p \<longleftrightarrow> p \<in> lott
 
 lemma SD_is_preorder': "preorder_on (lotteries_on carrier) (SD(le))"
   using SD_is_preorder[of le] by (simp add: carrier_eq)
+
+end
+
+
+
+subsection \<open>Stochastic Dominance for preference profiles\<close>
+
+context pref_profile_wf
+begin
+
+lemma SD_pref_profile:
+  assumes "i \<in> agents"
+  shows   "p \<succeq>[SD(R i)] q \<longleftrightarrow> p \<in> lotteries_on alts \<and> q \<in> lotteries_on alts \<and> 
+             (\<forall>x\<in>alts. measure_pmf.prob p (preferred_alts (R i) x) \<ge> 
+                         measure_pmf.prob q (preferred_alts (R i) x))"
+proof -
+  from assms interpret complete_preorder_on alts "R i" by simp
+  have "preferred_alts (R i) x = {y. y \<succeq>[R i] x}" for x using not_outside
+    by (auto simp: preferred_alts_def)
+  thus ?thesis by (simp add: SD_preorder preferred_alts_def)
+qed
+
+lemma SD_pref_profileI [intro?]: 
+  assumes "i \<in> agents" "p \<in> lotteries_on alts" "q \<in> lotteries_on alts"
+  assumes "\<And>x. x \<in> alts \<Longrightarrow>
+             measure_pmf.prob p (preferred_alts (R i) x) \<ge> 
+             measure_pmf.prob q (preferred_alts (R i) x)"
+  shows   "p \<succeq>[SD(R i)] q"
+  using assms by (simp add: SD_pref_profile)
+
+lemma SD_pref_profileD:
+  assumes "i \<in> agents" "p \<succeq>[SD(R i)] q"
+  shows   "p \<in> lotteries_on alts" "q \<in> lotteries_on alts"
+  and     "\<And>x. x \<in> alts \<Longrightarrow>
+             measure_pmf.prob p (preferred_alts (R i) x) \<ge> 
+             measure_pmf.prob q (preferred_alts (R i) x)"
+  using assms by (simp_all add: SD_pref_profile)
+
+end
+
+
+subsubsection \<open>SD efficient lotteries\<close>
+
+definition SD_efficient :: "('agent, 'alt) pref_profile \<Rightarrow> 'alt lottery \<Rightarrow> bool" where
+  SD_efficient_auxdef:
+    "SD_efficient R p \<longleftrightarrow>
+       (let agents = {i. \<exists>x. R i x x};
+            alts = {x. \<exists>i. R i x x}
+        in \<not>(\<exists>q\<in>lotteries_on alts. (\<forall>i\<in>agents. q \<succeq>[SD(R i)] p) \<and> (\<exists>i\<in>agents. q \<succ>[SD(R i)] p)))"
+
+context pref_profile_wf
+begin
+
+text \<open>
+  A lottery is considered SD-efficient if there is no other lottery such that 
+  all agents weakly prefer the other lottery (w.r.t. stochastic dominance) and at least
+  one agent strongly prefers the other lottery.
+\<close>
+lemma SD_efficient_def:
+  "SD_efficient R p \<longleftrightarrow>
+     \<not>(\<exists>q\<in>lotteries_on alts. (\<forall>i\<in>agents. q \<succeq>[SD(R i)] p) \<and> (\<exists>i\<in>agents. q \<succ>[SD(R i)] p))"
+proof -
+  from nonempty_alts obtain x where x: "x \<in> alts" by blast
+  from nonempty_agents obtain i where i: "i \<in> agents" by blast
+  from x have "i \<in> agents \<longleftrightarrow> (\<exists>x. R i x x)" for i
+    by (cases "i \<in> agents") (auto intro!: exI[of _ x] preorder_on.refl[OF prefs_wf'(2)])
+  hence A: "agents = {i. \<exists>x. R i x x}" by blast
+  have B: "alts = {x. \<exists>i. R i x x}"
+  proof safe
+    fix x j assume x: "R j x x"
+    hence "j \<in> agents" by (cases "j \<in> agents") auto
+    with preorder_on.carrier_eq[OF prefs_wf'(2), of j] x show "x \<in> alts" by simp
+  qed (auto intro!: exI[of _ i] preorder_on.refl[OF prefs_wf'(2)] i)
+  from A B show ?thesis unfolding SD_efficient_auxdef 
+    by (simp only: A [symmetric] B [symmetric] Let_def)
+qed
+   
+lemma SD_efficientD:
+  assumes "SD_efficient R p" "q \<in> lotteries_on alts" 
+      and "\<And>i. i \<in> agents \<Longrightarrow> q \<succeq>[SD(R i)] p" "\<exists>i\<in>agents. \<not>(q \<preceq>[SD(R i)] p)"
+  shows False
+  using assms unfolding SD_efficient_def strongly_preferred_def by blast
 
 end
 

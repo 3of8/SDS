@@ -75,132 +75,6 @@ lemma lottery_prob_alts: "p \<in> lotteries \<Longrightarrow> lottery_prob p alt
   by (rule lottery_prob_alts_superset) simp_all
 
 
-subsubsection \<open>Stochastic dominance\<close>
-
-text \<open>
-  Given a preference relation and an alternative, this returns the set of alternatives
-  considered to be at least as good as the given alternative.
-\<close>
-definition preferred_alts :: "'alt relation \<Rightarrow> 'alt \<Rightarrow> 'alt set" where
-  "preferred_alts R x = {y\<in>alts. y \<succeq>[R] x}"
-
-lemma preferred_alts_subset_alts: "preferred_alts R x \<subseteq> alts"
-  unfolding preferred_alts_def by simp
-
-lemma finite_preferred_alts [simp,intro!]: "finite (preferred_alts R x)"
-  unfolding preferred_alts_def by simp
-
-lemma preferred_alts_altdef: 
-  assumes "complete_preorder_on alts R"
-  shows   "preferred_alts R x = {y. y \<succeq>[R] x}"
-proof -
-  interpret complete_preorder_on alts R by fact
-  from not_outside show ?thesis by (auto simp: preferred_alts_def)
-qed
-
-lemma SD_agenda:
-  assumes "complete_preorder_on alts R"
-  shows   "p \<succeq>[SD(R)] q \<longleftrightarrow> p \<in> lotteries \<and> q \<in> lotteries \<and> 
-             (\<forall>x\<in>alts. measure_pmf.prob p (preferred_alts R x) \<ge> 
-                         measure_pmf.prob q (preferred_alts R x))"
-proof -
-  from assms interpret complete_preorder_on alts R .
-  have "preferred_alts R x = {y. y \<succeq>[R] x}" for x using not_outside
-    by (auto simp: preferred_alts_def)
-  thus ?thesis by (simp add: SD_preorder preferred_alts_def)
-qed
-
-lemma SD_agendaI [intro?]: 
-  assumes "complete_preorder_on alts R" "p \<in> lotteries" "q \<in> lotteries"
-  assumes "\<And>x. x \<in> alts \<Longrightarrow>
-             measure_pmf.prob p (preferred_alts R x) \<ge> measure_pmf.prob q (preferred_alts R x)"
-  shows   "p \<succeq>[SD(R)] q"
-  using assms by (simp add: SD_agenda)
-
-lemma SD_agendaD:
-  assumes "complete_preorder_on alts R" "p \<succeq>[SD(R)] q"
-  shows   "p \<in> lotteries_on alts" "q \<in> lotteries_on alts"
-  and     "\<And>x. x \<in> alts \<Longrightarrow>
-             measure_pmf.prob p (preferred_alts R x) \<ge> measure_pmf.prob q (preferred_alts R x)"
-  using assms by (simp_all add: SD_agenda)
-
-
-subsubsection \<open>SD efficient lotteries\<close>
-
-text \<open>
-  A lottery is considered SD-efficient if there is no other lottery such that 
-  all agents weakly prefer the other lottery (w.r.t. stochastic dominance) and at least
-  one agent strongly prefers the other lottery.
-\<close>
-definition SD_efficient :: "('agent, 'alt) pref_profile \<Rightarrow> 'alt lottery \<Rightarrow> bool" where
-  "SD_efficient R p \<longleftrightarrow>
-     \<not>(\<exists>q\<in>lotteries. (\<forall>i\<in>agents. q \<succeq>[SD(R i)] p) \<and> (\<exists>i\<in>agents. q \<succ>[SD(R i)] p))"
-
-lemma SD_efficientD:
-  assumes "SD_efficient R p" "q \<in> lotteries" 
-      and "\<And>i. i \<in> agents \<Longrightarrow> q \<succeq>[SD(R i)] p" "\<exists>i\<in>agents. \<not>(q \<preceq>[SD(R i)] p)"
-  shows False
-  using assms unfolding SD_efficient_def strongly_preferred_def by blast
-
-
-subsubsection \<open>Favourite alternatives\<close>
-
-definition has_unique_favorites :: "('agent, 'alt) pref_profile \<Rightarrow> bool" where
-  "has_unique_favorites R \<longleftrightarrow> (\<forall>i\<in>agents. is_singleton (favorites R i))"
-  
-lemma unique_favorites:
-  assumes "has_unique_favorites R" "i \<in> agents"
-  shows   "favorites R i = {favorite R i}"
-  using assms unfolding has_unique_favorites_def
-  by (auto simp: favorite_def is_singleton_the_elem)
-
-
-context
-  fixes R i assumes wf: "is_pref_profile R" "i \<in> agents"
-begin
-
-interpretation R: pref_profile_wf agents alts R
-  by fact
-
-interpretation Ri: finite_complete_preorder_on alts "R i"
-  using wf by simp
-
-lemma favorites_altdef':
-  "favorites R i = {x\<in>alts. \<forall>y\<in>alts. x \<succeq>[R i] y}"
-    unfolding Ri.Max_wrt_complete_preorder favorites_def
-    by (auto simp: strongly_preferred_def)
-
-lemma favorites_subset_alts:
-  "favorites R i \<subseteq> alts"
-  using assms by (simp add: favorites_altdef')
-
-lemma finite_favorites [simp, intro]:
-  "finite (favorites R i)"
-  using assms by (simp add: favorites_altdef')
-
-lemma favorites_nonempty:
-  "favorites R i \<noteq> {}"
-  unfolding favorites_def 
-  by (intro Ri.Max_wrt_nonempty) simp_all
-
-lemma favorite_in_alts:
-  assumes "has_unique_favorites R"
-  shows   "favorite R i \<in> alts"
-  using favorites_subset_alts assms wf by (simp add: unique_favorites)
-
-
-lemma favorites_permute: 
-  assumes perm: "\<sigma> permutes alts"
-  shows   "favorites (permute_profile \<sigma> R) i = \<sigma> ` favorites R i"
-proof -
-  from perm show ?thesis
-  unfolding favorites_def
-    by (subst Ri.Max_wrt_map_relation_bij)
-       (simp_all add: permute_profile_def map_relation_def permutes_bij)
-qed
-
-end
-
 context
   fixes R assumes R: "complete_preorder_on alts R"
 begin
@@ -369,7 +243,11 @@ lemma SD_efficient':
   assumes "is_pref_profile R" "q \<in> lotteries"
   assumes "\<And>i. i \<in> agents \<Longrightarrow> q \<succeq>[SD(R i)] sds R" "i \<in> agents" "q \<succ>[SD(R i)] sds R"
   shows   P
-  using SD_efficient[of R] sds_wf[OF assms(1)] assms unfolding SD_efficient_def by blast
+proof -
+  interpret pref_profile_wf agents alts R by fact
+  show ?thesis
+    using SD_efficient[of R] sds_wf[OF assms(1)] assms unfolding SD_efficient_def by blast
+qed
 
 
 text \<open>
@@ -418,7 +296,7 @@ proof unfold_locales
         with prob_q show ?thesis by simp
       qed
       with sds_wf R_wf show "q \<succeq>[SD(R i)] p" 
-        by (intro SD_agendaI) (simp_all add: preferred_alts_def i)
+        by (intro SD_pref_profileI) (simp_all add: preferred_alts_def i)
     next
       from y obtain i where i: "i \<in> agents" and y: "y \<succ>[R i] x"
         by (auto simp: Pareto_strict_iff)
@@ -435,7 +313,7 @@ proof unfold_locales
         using support by (simp add: prob_q pmf_positive)
       with i show "\<exists>i\<in>agents. \<not>p \<succeq>[SD(R i)] q" 
         by (auto intro!: bexI[of _ i] bexI[of _ y] dest!: bspec[of _ _ y] 
-                 simp: not_le preferred_alts_altdef R.SD_preorder)
+                 simp: not_le preferred_alts_def R.SD_preorder)
     qed simp_all
   }
   thus "set_pmf (sds R) \<inter> pareto_losers R = {}" by blast
@@ -501,9 +379,12 @@ lemma strongly_strategyproof_profileI [intro]:
   assumes "\<And>x. x \<in> alts \<Longrightarrow> lottery_prob (sds (R(i := Ri'))) (preferred_alts (R i) x)
                                \<le> lottery_prob (sds R) (preferred_alts (R i) x)"
   shows "strongly_strategyproof_profile R i Ri'"
-  unfolding strongly_strategyproof_profile_def
-  by rule (auto intro!: sds_wf assms pref_profile_wf.wf_update 
-                        pref_profile_wf.prefs_wf'[OF assms(1)])
+proof -
+  interpret pref_profile_wf agents alts R by fact
+  show ?thesis
+    unfolding strongly_strategyproof_profile_def
+    by rule (auto intro!: sds_wf assms pref_profile_wf.wf_update)
+qed
 
 lemma strongly_strategyproof_imp_not_manipulable:
   assumes "strongly_strategyproof_profile R i Ri'"

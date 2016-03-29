@@ -36,8 +36,12 @@ abbreviation RD :: "('agent, 'alt) pref_profile \<Rightarrow> 'alt lottery" wher
 lemma random_dictatorship_unique_favorites:
   assumes "is_pref_profile R" "has_unique_favorites R"
   shows   "RD R = map_pmf (favorite R) (pmf_of_set agents)"
-  using assms unfolding random_dictatorship_def map_pmf_def 
+proof -
+  from assms(1) interpret pref_profile_wf agents alts R .
+  from assms(2) interpret pref_profile_unique_favorites agents alts R by unfold_locales
+  show ?thesis unfolding random_dictatorship_def map_pmf_def 
     by (intro bind_pmf_cong) (auto simp: unique_favorites pmf_of_set_singleton)
+qed
 
 lemma random_dictatorship_unique_favorites':
   assumes "is_pref_profile R" "has_unique_favorites R"
@@ -45,11 +49,12 @@ lemma random_dictatorship_unique_favorites':
   using assms by (simp add: random_dictatorship_unique_favorites map_pmf_of_set)
 
 lemma pmf_random_dictatorship:
-  assumes [simp]: "is_pref_profile R"
+  assumes "is_pref_profile R"
   shows "pmf (RD R) x =
            (\<Sum>i\<in>agents. indicator (favorites R i) x /
               real (card (favorites R i))) / real (card agents)"
 proof -
+  from assms(1) interpret pref_profile_wf agents alts R .
   have "ereal (pmf (RD R) x) = 
           ereal ((\<Sum>i\<in>agents. pmf (pmf_of_set (favorites R i)) x) / real (card agents))"
     (is "_ = ereal (?p / _)") unfolding random_dictatorship_def
@@ -63,6 +68,7 @@ qed
 sublocale RD: social_decision_scheme agents alts RD
 proof
   fix R assume R_wf: "is_pref_profile R"
+  then interpret pref_profile_wf agents alts R .
   from R_wf show "RD R \<in> lotteries"
     using favorites_subset_alts favorites_nonempty
     by (auto simp: lotteries_on_def random_dictatorship_def)
@@ -112,7 +118,8 @@ sublocale RD: neutral_sds agents alts RD
 proof
   fix \<sigma> R
   assume perm: "\<sigma> permutes alts" and R_wf: "is_pref_profile R"
-  thus "RD (permute_profile \<sigma> R) = map_pmf \<sigma> (RD R)"
+  from R_wf interpret pref_profile_wf agents alts R .
+  from perm show "RD (permute_profile \<sigma> R) = map_pmf \<sigma> (RD R)"
     by (auto intro!: bind_pmf_cong simp: random_dictatorship_def map_bind_pmf 
           favorites_permute map_pmf_of_set_inj permutes_inj_on favorites_nonempty)
 qed
@@ -142,7 +149,7 @@ proof (unfold_locales, unfold RD.strongly_strategyproof_profile_def)
   interpret R': pref_profile_wf agents alts "R(i := Ri')" by fact
 
   show "SD (R i) (RD (R(i := Ri'))) (RD R)"
-  proof (rule SD_agendaI)
+  proof (rule R.SD_pref_profileI)
     fix x assume "x \<in> alts"
     hence "emeasure (measure_pmf (RD (R(i := Ri')))) (preferred_alts (R i) x)
              \<le> emeasure (measure_pmf (RD R)) (preferred_alts (R i) x)"

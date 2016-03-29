@@ -379,7 +379,7 @@ proof -
 qed
 
 text \<open>
-  Permutation of alternative commutes with RSD winners.
+  Permutation of alternatives commutes with RSD winners.
 \<close>
 lemma rsd_winners_permute_profile:
   assumes perm: "\<sigma> permutes alts" and "set agents' \<subseteq> agents" 
@@ -435,6 +435,7 @@ lemma RSD_extends_RD:
   shows   "RSD R = RD R"
 proof -
   from wf interpret pref_profile_wf agents alts R .
+  from unique interpret pref_profile_unique_favorites by unfold_locales
   have "RSD R = pmf_of_set agents \<bind> 
                   (\<lambda>i. random_serial_dictatorship (agents - {i}) (favorites R i) R)"
     by (simp add: random_serial_dictatorship_nonempty favorites_altdef Max_wrt_def)
