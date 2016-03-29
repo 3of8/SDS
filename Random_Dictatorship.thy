@@ -136,23 +136,25 @@ sublocale RD: strongly_strategyproof_sds agents alts RD
 proof (unfold_locales, unfold RD.strongly_strategyproof_profile_def)
   fix R i Ri' assume R_wf: "is_pref_profile R" and i: "i \<in> agents"
                  and Ri'_wf: "complete_preorder_on alts Ri'"
+  interpret R: pref_profile_wf agents alts R by fact
   from R_wf Ri'_wf i have R'_wf: "is_pref_profile (R(i := Ri'))"
-    by (simp add: pref_profile_wf_update)
+    by (simp add: R.wf_update)
+  interpret R': pref_profile_wf agents alts "R(i := Ri')" by fact
 
   show "SD (R i) (RD (R(i := Ri'))) (RD R)"
   proof (rule SD_agendaI)
     fix x assume "x \<in> alts"
     hence "emeasure (measure_pmf (RD (R(i := Ri')))) (preferred_alts (R i) x)
              \<le> emeasure (measure_pmf (RD R)) (preferred_alts (R i) x)"
-      using R_wf Ri'_wf maximal_imp_preferred[of "R i" x]
+      using Ri'_wf maximal_imp_preferred[of "R i" x]
       by (auto intro!: card_mono nn_integral_mono_AE 
                simp: random_dictatorship_def AE_measure_pmf_iff Max_wrt_prefs_finite
-                     emeasure_pmf_of_set favorites_def pref_profile_wfD Int_absorb2
+                     emeasure_pmf_of_set favorites_def Int_absorb2
                      Max_wrt_prefs_nonempty card_gt_0_iff)
     thus "lottery_prob (RD (R(i := Ri'))) (preferred_alts (R i) x)
             \<le> lottery_prob (RD R) (preferred_alts (R i) x)"
       by (simp add: measure_pmf.emeasure_eq_measure) 
-  qed (insert R_wf R'_wf, simp_all add: RD.sds_wf pref_profile_wfD i)
+  qed (insert R_wf R'_wf, simp_all add: RD.sds_wf i)
 qed
 
 end

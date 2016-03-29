@@ -21,43 +21,44 @@ begin
 text \<open>The type of preference profiles\<close>
 type_synonym ('agent, 'alt) pref_profile = "'agent \<Rightarrow> 'alt relation"
 
-definition pref_profile_wf :: "'agent set \<Rightarrow> 'alt set \<Rightarrow> ('agent, 'alt) pref_profile \<Rightarrow> bool" where
-  "pref_profile_wf agents alts R \<longleftrightarrow> 
-     (\<forall>i\<in>agents. finite_complete_preorder_on alts (R i)) \<and>
-     (\<forall>i. i \<notin> agents \<longrightarrow> R i = (\<lambda>_ _. False))"
+locale pref_profile_wf =
+  fixes agents :: "'agent set" and alts :: "'alt set" and R :: "('agent, 'alt) pref_profile"
+  assumes nonempty_agents [simp]: "agents \<noteq> {}"
+  assumes prefs_wf [simp]: "i \<in> agents \<Longrightarrow> finite_complete_preorder_on alts (R i)"
+  assumes prefs_undefined [simp]: "i \<notin> agents \<Longrightarrow> \<not>R i x y"
+begin
 
-lemma pref_profile_wfI [intro?]:
-  "(\<And>i. i \<in> agents \<Longrightarrow> finite_complete_preorder_on alts (R i)) \<Longrightarrow>
-   (\<And>i. i \<notin> agents \<Longrightarrow> R i = (\<lambda>_ _. False)) \<Longrightarrow> pref_profile_wf agents alts R"
-  by (simp add: pref_profile_wf_def)
+lemma prefs_undefined': "i \<notin> agents \<Longrightarrow> R i = (\<lambda>_ _. False)"
+  by (intro ext prefs_undefined) simp_all
 
-lemma pref_profile_wfD [dest]:
-  "pref_profile_wf agents alts R \<Longrightarrow> i \<in> agents \<Longrightarrow> complete_preorder_on alts (R i)"
-  "pref_profile_wf agents alts R \<Longrightarrow> i \<in> agents \<Longrightarrow> finite_complete_preorder_on alts (R i)"
-  "pref_profile_wf agents alts R \<Longrightarrow> i \<notin> agents \<Longrightarrow> R i = (\<lambda>_ _. False)"
-  by (simp_all add: pref_profile_wf_def finite_complete_preorder_on_iff)
+lemma prefs_wf' [simp]:
+  "i \<in> agents \<Longrightarrow> complete_preorder_on alts (R i)" "i \<in> agents \<Longrightarrow> preorder_on alts (R i)"
+  using prefs_wf[of i]
+  by (simp_all add: finite_complete_preorder_on_def complete_preorder_on_def del: prefs_wf)
 
-lemma pref_profile_wf_update:
-  "pref_profile_wf agents alts R \<Longrightarrow> i \<in> agents \<Longrightarrow>
-     finite_complete_preorder_on alts Ri' \<Longrightarrow> 
+lemma wf_update:
+  "i \<in> agents \<Longrightarrow> finite_complete_preorder_on alts Ri' \<Longrightarrow> 
      pref_profile_wf agents alts (R(i := Ri'))"
-  by (auto simp: pref_profile_wf_def)
+  by (auto intro!: pref_profile_wf.intro split: if_splits)
 
-lemma pref_profile_wf_permute_agents:
-  assumes "\<sigma> permutes agents" "pref_profile_wf agents alts R"
+lemma wf_permute_agents:
+  assumes "\<sigma> permutes agents"
   shows   "pref_profile_wf agents alts (R \<circ> \<sigma>)"
   unfolding o_def using permutes_in_image[OF assms(1)]
-  by (intro pref_profile_wfI pref_profile_wfD[OF assms(2)]) simp_all
+  by (intro pref_profile_wf.intro prefs_wf) simp_all
 
-lemma pref_profile_eqI:
+lemma (in -) pref_profile_eqI:
   assumes "pref_profile_wf agents alts R1" "pref_profile_wf agents alts R2"
   assumes "\<And>x. x \<in> agents \<Longrightarrow> R1 x = R2 x"
   shows   "R1 = R2"
 proof
-  fix x
-  from assms show "R1 x = R2 x"
-    by (cases "x \<in> agents") (simp_all add: pref_profile_wf_def) 
+  interpret R1: pref_profile_wf agents alts R1 by fact
+  interpret R2: pref_profile_wf agents alts R2 by fact
+  fix x show "R1 x = R2 x"
+    by (cases "x \<in> agents"; intro ext) (simp_all add: assms(3)) 
 qed
+
+end
 
 
 text \<open>
@@ -83,13 +84,13 @@ lemma permute_profile_o:
   shows   "permute_profile f (permute_profile g R) = permute_profile (f \<circ> g) R"
   using assms by (simp add: permute_profile_def o_inv_distrib)
 
-lemma pref_profile_wf_permute:
-  assumes "\<sigma> permutes alts" "pref_profile_wf agents alts R"
+lemma (in pref_profile_wf) wf_permute_alts:
+  assumes "\<sigma> permutes alts"
   shows   "pref_profile_wf agents alts (permute_profile \<sigma> R)"
-proof
+proof (rule pref_profile_wf.intro)
   fix i assume "i \<in> agents"
-  with assms interpret R: finite_complete_preorder_on alts "R i"
-    by (simp add: pref_profile_wfD)
+  with assms interpret R: finite_complete_preorder_on alts "R i" by simp
+    
   from assms have [simp]: "inv \<sigma> x \<in> alts \<longleftrightarrow> x \<in> alts" for x
     by (simp add: permutes_in_image permutes_inv)
 
@@ -119,17 +120,107 @@ lemma permute_profile_iff [simp]:
   using assms by (simp add: permute_profile_def permutes_inverses)
 
 
+subsection \<open>Pareto dominance\<close>
+
+definition Pareto :: "('agent \<Rightarrow> 'alt relation) \<Rightarrow> 'alt relation" where
+  "x \<preceq>[Pareto(R)] y \<longleftrightarrow> (\<exists>j. x \<preceq>[R j] x) \<and> (\<forall>i. x \<preceq>[R i] x \<longrightarrow> x \<preceq>[R i] y)"
+
+text \<open>
+  A Pareto loser is an alternative that is Pareto-dominated by some other alternative.
+\<close>
+definition pareto_losers :: "('agent, 'alt) pref_profile \<Rightarrow> 'alt set" where
+  "pareto_losers R = {x. \<exists>y. y \<succ>[Pareto(R)] x}"
+
+lemma pareto_losersI [intro?]: "y \<succ>[Pareto(R)] x \<Longrightarrow> x \<in> pareto_losers R"
+  by (auto simp: pareto_losers_def)
+
+context pref_profile_wf
+begin
+
+lemma Pareto_iff:
+  "x \<preceq>[Pareto(R)] y \<longleftrightarrow> (\<forall>i\<in>agents. x \<preceq>[R i] y)"
+proof
+  assume A: "x \<preceq>[Pareto(R)] y"
+  then obtain j where j: "x \<preceq>[R j] x" by (auto simp: Pareto_def)
+  hence j': "j \<in> agents" by (cases "j \<in> agents") auto
+  then interpret complete_preorder_on alts "R j" by simp
+  from j have "x \<in> alts" by (auto simp: carrier_eq)
+  with A preorder_on.refl[OF prefs_wf'(2)]
+    show "(\<forall>i\<in>agents. x \<preceq>[R i] y)" by (auto simp: Pareto_def)
+next
+  assume A: "(\<forall>i\<in>agents. x \<preceq>[R i] y)"
+  from nonempty_agents obtain j where j: "j \<in> agents" by blast
+  then interpret complete_preorder_on alts "R j" by simp 
+  from j A have "x \<preceq>[R j] y" by simp
+  hence "x \<preceq>[R j] x" using not_outside refl by blast
+  with A show "x \<preceq>[Pareto(R)] y" by (auto simp: Pareto_def)
+qed
+
+lemma Pareto_strict_iff: "x \<prec>[Pareto(R)] y \<longleftrightarrow> (\<forall>i\<in>agents. x \<preceq>[R i] y) \<and> (\<exists>i\<in>agents. x \<prec>[R i] y)"
+  by (auto simp: strongly_preferred_def Pareto_iff)
+
+lemma Pareto_strictI:
+  assumes "\<And>i. i \<in> agents \<Longrightarrow> x \<preceq>[R i] y" "i \<in> agents" "x \<prec>[R i] y"
+  shows   "x \<prec>[Pareto(R)] y"
+  using assms by (auto simp: Pareto_strict_iff)
+
+lemma Pareto_strictI':
+  assumes "\<And>i. i \<in> agents \<Longrightarrow> x \<preceq>[R i] y" "i \<in> agents" "\<not>x \<succeq>[R i] y"
+  shows   "x \<prec>[Pareto(R)] y"
+proof -
+  from assms interpret complete_preorder_on alts "R i" by simp
+  from assms have "x \<prec>[R i] y" by (simp add: strongly_preferred_def)
+  with assms show ?thesis by (auto simp: Pareto_strict_iff )
+qed
+
+
+sublocale Pareto: preorder_on alts "Pareto(R)"
+proof -
+  have "preorder_on alts (R i)" if "i \<in> agents" for i using that by simp_all
+  note A = preorder_on.not_outside[OF this(1)] preorder_on.refl[OF this(1)]
+           preorder_on.trans[OF this(1)]
+  from nonempty_agents obtain i where i: "i \<in> agents" by blast
+  show "preorder_on alts (Pareto R)"
+  proof
+    fix x y assume "x \<preceq>[Pareto(R)] y"
+    with A(1,2)[OF i] i show "x \<in> alts" "y \<in> alts" by (auto simp: Pareto_iff)
+  qed (auto simp: Pareto_iff intro: A)
+qed
+
+lemma pareto_loser_in_alts: 
+  assumes "x \<in> pareto_losers R"
+  shows   "x \<in> alts"
+proof -
+  from assms obtain y i where "i \<in> agents" "x \<prec>[R i] y"
+    by (auto simp: pareto_losers_def Pareto_strict_iff)
+  then interpret complete_preorder_on alts "R i" by simp
+  from \<open>x \<prec>[R i] y\<close> have "x \<preceq>[R i] y" by (simp add: strongly_preferred_def)
+  thus "x \<in> alts" using not_outside by simp
+qed
+
+lemma pareto_losersE:
+  assumes "x \<in> pareto_losers R"
+  obtains y where "y \<in> alts" "y \<succ>[Pareto(R)] x"
+proof -
+  from assms obtain y where "y \<succ>[Pareto(R)] x" unfolding pareto_losers_def by blast
+  moreover from this Pareto.not_outside[of x y] have "y \<in> alts" 
+    by (simp add: strongly_preferred_def)
+  ultimately show ?thesis using that by blast
+qed
+
+end
+
+
 subsection \<open>Favourite alternatives\<close>
 
 definition favorites :: "('agent, 'alt) pref_profile \<Rightarrow> 'agent \<Rightarrow> 'alt set" where
   "favorites R i = Max_wrt (R i)"
 
-lemma favorites_altdef:
-  assumes "pref_profile_wf agents alts R"
-  shows   "favorites R i = Max_wrt_among (R i) alts"
+lemma (in pref_profile_wf) favorites_altdef:
+  "favorites R i = Max_wrt_among (R i) alts"
 proof (cases "i \<in> agents")
   assume "i \<in> agents"
-  with assms interpret complete_preorder_on alts "R i" by (simp add: pref_profile_wfD)
+  with assms interpret complete_preorder_on alts "R i" by simp
   show ?thesis 
     by (simp add: favorites_def Max_wrt_complete_preorder Max_wrt_among_complete_preorder)
 qed (insert assms, simp_all add: favorites_def Max_wrt_def Max_wrt_among_def pref_profile_wf_def)
@@ -163,8 +254,8 @@ type_synonym ('agent, 'alt) apref_profile = "'alt set list multiset"
 definition anonymous_profile :: "'agent set \<Rightarrow> ('agent, 'alt) pref_profile \<Rightarrow> ('agent, 'alt) apref_profile" 
   where "anonymous_profile agents R = image_mset (weak_ranking \<circ> R) (mset_set agents)"
 
-lemma anonymous_profile_permute:
-  assumes "pref_profile_wf agents alts R" "\<sigma> permutes alts"  "finite agents" 
+lemma (in pref_profile_wf) anonymous_profile_permute:
+  assumes "\<sigma> permutes alts"  "finite agents" 
   shows   "anonymous_profile agents (permute_profile \<sigma> R) = image_mset (map (op ` \<sigma>)) (anonymous_profile agents R)"
 proof -
   have "anonymous_profile agents (permute_profile \<sigma> R) = 
@@ -172,58 +263,10 @@ proof -
     by (simp add: anonymous_profile_def multiset.map_comp permute_profile_map_relation o_def)
   also from assms have "\<dots> = {#map (op ` \<sigma>) (weak_ranking (R x)). x \<in># mset_set agents#}"
     by (intro image_mset_cong)
-       (simp add: pref_profile_wfD finite_complete_preorder_on.weak_ranking_permute[of alts])
+       (simp add: finite_complete_preorder_on.weak_ranking_permute[of alts])
   also have "\<dots> = image_mset (map (op ` \<sigma>)) (anonymous_profile agents R)"
     by (simp add: anonymous_profile_def multiset.map_comp o_def)
   finally show ?thesis .
-qed
-
-lemma image_mset_If:
-  "image_mset (\<lambda>x. if P x then f x else g x) A = 
-     image_mset f (filter_mset P A) + image_mset g (filter_mset (\<lambda>x. \<not>P x) A)"
-  by (induction A) (auto simp: add_ac)
-
-lemma mset_set_Union: 
-  "finite A \<Longrightarrow> finite B \<Longrightarrow> A \<inter> B = {} \<Longrightarrow> mset_set (A \<union> B) = mset_set A + mset_set B"
-  by (induction A rule: finite_induct) (auto simp: add_ac)
-
-
-lemma filter_mset_mset_set [simp]:
-  "finite A \<Longrightarrow> filter_mset P (mset_set A) = mset_set {x\<in>A. P x}"
-proof (induction A rule: finite_induct)
-  case (insert x A)
-  from insert.hyps have "filter_mset P (mset_set (insert x A)) = 
-      filter_mset P (mset_set A) + mset_set (if P x then {x} else {})"
-    by (simp add: add_ac)
-  also have "filter_mset P (mset_set A) = mset_set {x\<in>A. P x}"
-    by (rule insert.IH)
-  also from insert.hyps 
-    have "\<dots> + mset_set (if P x then {x} else {}) =
-            mset_set ({x \<in> A. P x} \<union> (if P x then {x} else {}))" (is "_ = mset_set ?A")
-     by (intro mset_set_Union [symmetric]) simp_all
-  also from insert.hyps have "?A = {y\<in>insert x A. P y}" by auto
-  finally show ?case .
-qed simp_all
-
-lemma image_mset_Diff: 
-  assumes "B \<subseteq># A"
-  shows   "image_mset f (A - B) = image_mset f A - image_mset f B"
-proof -
-  have "image_mset f (A - B + B) = image_mset f (A - B) + image_mset f B"
-    by simp
-  also from assms have "A - B + B = A"
-    by (simp add: subset_mset.diff_add) 
-  finally show ?thesis by simp
-qed
-
-lemma mset_set_Diff:
-  assumes "finite A" "B \<subseteq> A"
-  shows  "mset_set (A - B) = mset_set A - mset_set B"
-proof -
-  from assms have "mset_set ((A - B) \<union> B) = mset_set (A - B) + mset_set B"
-    by (intro mset_set_Union) (auto dest: finite_subset)
-  also from assms have "A - B \<union> B = A" by blast
-  finally show ?thesis by simp
 qed
 
 lemma anonymous_profile_update:
@@ -261,11 +304,12 @@ definition prefs_from_table :: "('agent \<times> 'alt set list) list \<Rightarro
   "prefs_from_table xss = (\<lambda>i. case_option (\<lambda>_ _. False) of_weak_ranking (map_of xss i))"
 
 definition prefs_from_table_wf where
-  "prefs_from_table_wf agents alts xss \<longleftrightarrow> distinct (map fst xss) \<and> set (map fst xss) = agents \<and>
-       (\<forall>xs\<in>set (map snd xss). (\<Union>set xs) = alts \<and> is_finite_weak_ranking xs)"
+  "prefs_from_table_wf agents alts xss \<longleftrightarrow> agents \<noteq> {} \<and> distinct (map fst xss) \<and> 
+       set (map fst xss) = agents \<and> (\<forall>xs\<in>set (map snd xss). (\<Union>set xs) = alts \<and> 
+       is_finite_weak_ranking xs)"
 
 lemma prefs_from_table_wfI:
-  assumes "distinct (map fst xss)"
+  assumes "agents \<noteq> {}" "distinct (map fst xss)"
   assumes "set (map fst xss) = agents"
   assumes "\<And>xs. xs \<in> set (map snd xss) \<Longrightarrow> (\<Union>set xs) = alts"
   assumes "\<And>xs. xs \<in> set (map snd xss) \<Longrightarrow> is_finite_weak_ranking xs"
@@ -274,7 +318,7 @@ lemma prefs_from_table_wfI:
 
 lemma prefs_from_table_wfD:
   assumes "prefs_from_table_wf agents alts xss"
-  shows "distinct (map fst xss)"
+  shows "agents \<noteq> {}" "distinct (map fst xss)"
     and "set (map fst xss) = agents"
     and "\<And>xs. xs \<in> set (map snd xss) \<Longrightarrow> (\<Union>set xs) = alts"
     and "\<And>xs. xs \<in> set (map snd xss) \<Longrightarrow> is_finite_weak_ranking xs"
@@ -282,8 +326,8 @@ lemma prefs_from_table_wfD:
        
 lemma pref_profile_from_tableI: 
   "prefs_from_table_wf agents alts xss \<Longrightarrow> pref_profile_wf agents alts (prefs_from_table xss)"
-  unfolding pref_profile_wf_def
-proof safe
+using assms
+proof (intro pref_profile_wf.intro)
   assume wf: "prefs_from_table_wf agents alts xss"
   fix i assume i: "i \<in> agents"
   with wf have "i \<in> set (map fst xss)" by (simp add: prefs_from_table_wf_def)
@@ -294,12 +338,11 @@ proof safe
     by (auto simp: prefs_from_table_wf_def intro!: finite_complete_preorder_of_weak_ranking)
 next
   assume wf: "prefs_from_table_wf agents alts xss"
-  fix i assume i: "i \<notin> agents"
+  fix i x y assume i: "i \<notin> agents"
   with wf have "i \<notin> set (map fst xss)" by (simp add: prefs_from_table_wf_def)
   hence "map_of xss i = None" by (simp add: map_of_eq_None_iff)
-  thus "prefs_from_table xss i = (\<lambda>_ _. False)"
-    by (simp add: prefs_from_table_def)
-qed
+  thus "\<not>prefs_from_table xss i x y" by (simp add: prefs_from_table_def)
+qed (simp_all add: prefs_from_table_wf_def)
 
 lemma prefs_from_table_eqI:
   assumes "distinct (map fst xs)" "distinct (map fst ys)" "set xs = set ys"
@@ -388,6 +431,7 @@ proof
   (* TODO: Clean up this mess *)
   from assms have wf': "prefs_from_table_wf agents alts (map (\<lambda>(x, y). (x, map (op ` \<sigma>) y)) xss)"
     apply (intro prefs_from_table_wfI)
+    apply (simp add: prefs_from_table_wf_def)
     apply (simp add: o_def case_prod_unfold prefs_from_table_wf_def)
     apply (simp add: o_def case_prod_unfold prefs_from_table_wf_def)
     apply (simp add: o_def case_prod_unfold)
@@ -557,7 +601,7 @@ proof -
     by (simp add: agents set_map [symmetric] nth_map [symmetric] del: set_map)
   have idx_unidx: "idx (unidx i) = i" if i: "i < length xs" for i
     unfolding idx_def unidx_def using wf(1) index_nth_id[of "map fst xs" i] i
-    by (simp add: prefs_from_table_wfD(1))
+    by (simp add: prefs_from_table_wfD(2))
  
   def \<pi> \<equiv> "\<lambda>x. if x \<in> agents then (unidx \<circ> f \<circ> idx) x else x"
   def \<pi>' \<equiv> "\<lambda>x. if x \<in> agents then (unidx \<circ> inv f \<circ> idx) x else x"
@@ -645,18 +689,22 @@ lemma anonymous_profile_agent_permutation:
   assumes fin: "finite agents"
   obtains \<pi> where "\<pi> permutes agents" "R2 \<circ> \<pi> = R1"
 proof -
+  interpret R1: pref_profile_wf agents alts R1 by fact
+  interpret R2: pref_profile_wf agents alts R2 by fact
+
   from eq have "{#weak_ranking (R1 x). x \<in># mset_set agents#} = 
                   {#weak_ranking (R2 x). x \<in># mset_set agents#}"
     by (simp add: anonymous_profile_def o_def)
   from image_mset_eq_permutation[OF this fin] guess \<pi> . note \<pi> = this
-  from wf \<pi> have wf': "pref_profile_wf agents alts (R2 \<circ> \<pi>)"
-    by (intro pref_profile_wf_permute_agents)
+  from \<pi> have wf': "pref_profile_wf agents alts (R2 \<circ> \<pi>)"
+    by (intro R2.wf_permute_agents)
+  then interpret R2': pref_profile_wf agents alts "R2 \<circ> \<pi>" .
   have "R2 \<circ> \<pi> = R1"
   proof (intro pref_profile_eqI[OF wf' wf(1)])
     fix x assume x: "x \<in> agents"
     with \<pi> have "weak_ranking ((R2 o \<pi>) x) = weak_ranking (R1 x)" by simp
     with wf' wf(1) x show "(R2 \<circ> \<pi>) x = R1 x"
-      by (intro weak_ranking_eqD[of alts]) auto
+      by (intro weak_ranking_eqD[of alts] R2'.prefs_wf) simp_all
   qed
   from \<pi>(1) and this show ?thesis by (rule that)
 qed

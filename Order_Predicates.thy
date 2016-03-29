@@ -120,6 +120,14 @@ abbreviation (input) weakly_not_preferred ("_ \<succeq>[_] _" [51,10,51] 60) whe
 abbreviation (input) strongly_not_preferred ("_ \<succ>[_] _" [51,10,51] 60) where
   "a \<succ>[R] b \<equiv> b \<prec>[R] a"
 
+lemma (in complete_preorder_on) not_weakly_preferred_iff:
+  "a \<in> carrier \<Longrightarrow> b \<in> carrier \<Longrightarrow> \<not>a \<preceq>[le] b \<longleftrightarrow> b \<prec>[le] a"
+  using complete[of a b] by (auto simp: strongly_preferred_def)
+
+lemma (in complete_preorder_on) not_strongly_preferred_iff:
+  "a \<in> carrier \<Longrightarrow> b \<in> carrier \<Longrightarrow> \<not>a \<prec>[le] b \<longleftrightarrow> b \<preceq>[le] a"
+  using complete[of a b] by (auto simp: strongly_preferred_def)
+
 
 subsection \<open>Maximal elements\<close>
 

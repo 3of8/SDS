@@ -2,6 +2,53 @@ theory Missing_Multiset
 imports Main "~~/src/HOL/Library/Multiset" "~~/src/HOL/Library/Disjoint_Sets"
 begin
 
+lemma image_mset_If:
+  "image_mset (\<lambda>x. if P x then f x else g x) A = 
+     image_mset f (filter_mset P A) + image_mset g (filter_mset (\<lambda>x. \<not>P x) A)"
+  by (induction A) (auto simp: add_ac)
+
+lemma mset_set_Union: 
+  "finite A \<Longrightarrow> finite B \<Longrightarrow> A \<inter> B = {} \<Longrightarrow> mset_set (A \<union> B) = mset_set A + mset_set B"
+  by (induction A rule: finite_induct) (auto simp: add_ac)
+
+lemma filter_mset_mset_set [simp]:
+  "finite A \<Longrightarrow> filter_mset P (mset_set A) = mset_set {x\<in>A. P x}"
+proof (induction A rule: finite_induct)
+  case (insert x A)
+  from insert.hyps have "filter_mset P (mset_set (insert x A)) = 
+      filter_mset P (mset_set A) + mset_set (if P x then {x} else {})"
+    by (simp add: add_ac)
+  also have "filter_mset P (mset_set A) = mset_set {x\<in>A. P x}"
+    by (rule insert.IH)
+  also from insert.hyps 
+    have "\<dots> + mset_set (if P x then {x} else {}) =
+            mset_set ({x \<in> A. P x} \<union> (if P x then {x} else {}))" (is "_ = mset_set ?A")
+     by (intro mset_set_Union [symmetric]) simp_all
+  also from insert.hyps have "?A = {y\<in>insert x A. P y}" by auto
+  finally show ?case .
+qed simp_all
+
+lemma image_mset_Diff: 
+  assumes "B \<subseteq># A"
+  shows   "image_mset f (A - B) = image_mset f A - image_mset f B"
+proof -
+  have "image_mset f (A - B + B) = image_mset f (A - B) + image_mset f B"
+    by simp
+  also from assms have "A - B + B = A"
+    by (simp add: subset_mset.diff_add) 
+  finally show ?thesis by simp
+qed
+
+lemma mset_set_Diff:
+  assumes "finite A" "B \<subseteq> A"
+  shows  "mset_set (A - B) = mset_set A - mset_set B"
+proof -
+  from assms have "mset_set ((A - B) \<union> B) = mset_set (A - B) + mset_set B"
+    by (intro mset_set_Union) (auto dest: finite_subset)
+  also from assms have "A - B \<union> B = A" by blast
+  finally show ?thesis by simp
+qed
+
 lemma bij_betw_UNION_disjoint:
   assumes disj: "disjoint_family_on A' I"
   assumes bij: "\<And>i. i \<in> I \<Longrightarrow> bij_betw f (A i) (A' i)"

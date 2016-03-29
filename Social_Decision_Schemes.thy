@@ -45,7 +45,7 @@ lemma pref_profile_wfI' [intro?]:
 lemma is_pref_profile_update [simp,intro]:
   assumes "is_pref_profile R" "complete_preorder_on alts Ri'" "i \<in> agents"
   shows   "is_pref_profile (R(i := Ri'))"
-  using assms by (auto intro!: pref_profile_wf_update)
+  using assms by (auto intro!: pref_profile_wf.wf_update)
 
 lemma agenda [simp,intro]: "agenda agents alts"
   by (rule agenda_axioms)
@@ -125,32 +125,6 @@ lemma SD_agendaD:
   using assms by (simp_all add: SD_agenda)
 
 
-subsubsection \<open>Pareto dominance\<close>
-
-text \<open>
-  This captures the notion of Pareto dominance. An alternative @{term x} is Pareto-dominated
-  by an alternative @{term y} w.r.t. the preference profile @{term R} if all agents weakly prefer
-  @{term y} to @{term x} and at least one agent strictly prefers @{term y} to @{term x}.
-\<close>
-definition pareto_dom :: "('agent, 'alt) pref_profile \<Rightarrow> 'alt relation" where
-  "pareto_dom R x y \<longleftrightarrow> x \<in> alts \<and> y \<in> alts \<and> (\<forall>i\<in>agents. x \<preceq>[R i] y) \<and> (\<exists>i\<in>agents. x \<prec>[R i] y)"
-
-lemma pareto_domI:
-  "x \<in> alts \<Longrightarrow> y \<in> alts \<Longrightarrow> (\<And>i. i \<in> agents \<Longrightarrow> x \<preceq>[R i] y) \<Longrightarrow> 
-     \<exists>i\<in>agents. \<not>y \<preceq>[R i] x \<Longrightarrow> pareto_dom R x y"
-  by (auto simp: pareto_dom_def strongly_preferred_def)
-
-lemma pareto_dom_irrefl [simp]: "\<not>pareto_dom R x x" 
-  by (auto simp add: pareto_dom_def strongly_preferred_def)
-
-
-text \<open>
-  A Pareto loser is an alternative that is Pareto-dominated by some other alternative.
-\<close>
-definition pareto_losers :: "('agent, 'alt) pref_profile \<Rightarrow> 'alt set" where
-  "pareto_losers R = {x. \<exists>y. pareto_dom R x y}"
-
-
 subsubsection \<open>SD efficient lotteries\<close>
 
 text \<open>
@@ -185,12 +159,15 @@ context
   fixes R i assumes wf: "is_pref_profile R" "i \<in> agents"
 begin
 
-interpretation R: finite_complete_preorder_on alts "R i"
-  using wf by (simp add: pref_profile_wfD)
+interpretation R: pref_profile_wf agents alts R
+  by fact
+
+interpretation Ri: finite_complete_preorder_on alts "R i"
+  using wf by simp
 
 lemma favorites_altdef':
   "favorites R i = {x\<in>alts. \<forall>y\<in>alts. x \<succeq>[R i] y}"
-    unfolding R.Max_wrt_complete_preorder favorites_def
+    unfolding Ri.Max_wrt_complete_preorder favorites_def
     by (auto simp: strongly_preferred_def)
 
 lemma favorites_subset_alts:
@@ -204,15 +181,25 @@ lemma finite_favorites [simp, intro]:
 lemma favorites_nonempty:
   "favorites R i \<noteq> {}"
   unfolding favorites_def 
-  by (intro R.Max_wrt_nonempty) simp_all
+  by (intro Ri.Max_wrt_nonempty) simp_all
 
 lemma favorite_in_alts:
   assumes "has_unique_favorites R"
   shows   "favorite R i \<in> alts"
   using favorites_subset_alts assms wf by (simp add: unique_favorites)
 
-end
 
+lemma favorites_permute: 
+  assumes perm: "\<sigma> permutes alts"
+  shows   "favorites (permute_profile \<sigma> R) i = \<sigma> ` favorites R i"
+proof -
+  from perm show ?thesis
+  unfolding favorites_def
+    by (subst Ri.Max_wrt_map_relation_bij)
+       (simp_all add: permute_profile_def map_relation_def permutes_bij)
+qed
+
+end
 
 context
   fixes R assumes R: "complete_preorder_on alts R"
@@ -232,18 +219,6 @@ lemma maximal_imp_preferred:
   by (auto simp: R.Max_wrt_complete_preorder preferred_alts_def strongly_preferred_def)
 
 end
-
-lemma favorites_permute: 
-  assumes wf: "is_pref_profile R" "i \<in> agents" and perm: "\<sigma> permutes alts"
-  shows   "favorites (permute_profile \<sigma> R) i = \<sigma> ` favorites R i"
-proof -
-  from assms interpret finite_complete_preorder_on alts "R i" 
-    by (simp add: pref_profile_wfD)
-  from perm show ?thesis
-  unfolding favorites_def
-    by (subst Max_wrt_map_relation_bij)
-       (simp_all add: permute_profile_def map_relation_def permutes_bij)
-qed
 
 end
 
@@ -343,8 +318,9 @@ lemma sds_automorphism:
   assumes eq: "anonymous_profile agents R = anonymous_profile agents (permute_profile \<sigma> R)"
   shows   "map_pmf \<sigma> (sds R) = sds R"
 proof -
-  from perm wf have "is_pref_profile (permute_profile \<sigma> R)"
-    by (rule pref_profile_wf_permute)
+  from wf interpret pref_profile_wf agents alts R .
+  from perm have "is_pref_profile (permute_profile \<sigma> R)"
+    by (rule wf_permute_alts)
   from anonymous_profile_agent_permutation[OF eq wf this finite_agents] guess \<pi> .
   have "sds (permute_profile \<sigma> R \<circ> \<pi>) = sds (permute_profile \<sigma> R)"
     by (rule anonymous) fact+
@@ -364,7 +340,7 @@ locale ex_post_efficient_sds = social_decision_scheme agents alts sds
 begin
 
 lemma ex_post_efficient':
-  assumes "is_pref_profile R" "pareto_dom R x y"
+  assumes "is_pref_profile R" "y \<succ>[Pareto(R)] x"
   shows   "pmf (sds R) x = 0"
   using ex_post_efficient[of R] assms 
   by (auto simp: set_pmf_eq pareto_losers_def)
@@ -402,12 +378,13 @@ text \<open>
 sublocale ex_post_efficient_sds
 proof unfold_locales
   fix R :: "('agent, 'alt) pref_profile" assume R_wf: "is_pref_profile R"
+  interpret pref_profile_wf agents alts R by fact
   def [simp]: p \<equiv> "sds R"
   {
     fix x assume support: "x \<in> set_pmf (sds R)" and loser: "x \<in> pareto_losers R"
     from support sds_wf R_wf have [simp]: "x \<in> alts" by (auto simp: lotteries_on_def)
-    from loser obtain y where y: "pareto_dom R x y" by (force simp: pareto_losers_def)
-    hence [simp]: "y \<in> alts" by (simp add: pareto_dom_def)
+    from loser obtain y where y: "y \<in> alts" "y \<succ>[Pareto(R)] x" by (cases rule: pareto_losersE)
+    note [simp] = \<open>y \<in> alts\<close>
 
     let ?f = "(\<lambda>z. if z = x then y else z)"
     def q \<equiv> "map_pmf ?f p"
@@ -422,7 +399,7 @@ proof unfold_locales
     proof (rule SD_efficientD)
       fix i assume i: "i \<in> agents"
       from i interpret R: finite_complete_preorder_on alts "R i"
-        using R_wf by (simp add: pref_profile_wfD)
+        using R_wf by simp
       
       have "lottery_prob q (preferred_alts (R i) z)  \<ge> lottery_prob p (preferred_alts (R i) z)" 
         if [simp]: "z \<in> alts" for z
@@ -435,29 +412,28 @@ proof unfold_locales
       next
         assume xz: "x \<succeq>[R i] z"
         with y i have yz: "y \<succeq>[R i] z"
-          by (intro R.trans[of z x y]) (auto simp: pareto_dom_def)
+          by (intro R.trans[of z x y]) (auto simp: Pareto_strict_iff)
         from xz yz have "?f -` preferred_alts (R i) z = preferred_alts (R i) z" 
           by (auto simp: preferred_alts_def)
         with prob_q show ?thesis by simp
       qed
       with sds_wf R_wf show "q \<succeq>[SD(R i)] p" 
-        by (intro SD_agendaI) (simp_all add: preferred_alts_def pref_profile_wfD i)
+        by (intro SD_agendaI) (simp_all add: preferred_alts_def i)
     next
       from y obtain i where i: "i \<in> agents" and y: "y \<succ>[R i] x"
-        by (auto simp: pareto_dom_def)
+        by (auto simp: Pareto_strict_iff)
       from i interpret R: finite_complete_preorder_on alts "R i"
-        using R_wf by (simp add: pref_profile_wfD)
+        using R_wf by simp
       from y i have "?f -` preferred_alts (R i) y = {x} \<union> preferred_alts (R i) y"
-        by (auto simp: pareto_dom_def strongly_preferred_def R.refl preferred_alts_def)
+        by (auto simp: Pareto_strict_iff strongly_preferred_def R.refl preferred_alts_def)
       also from y i have "lottery_prob p \<dots> = 
             pmf (sds R) x + lottery_prob (sds R) (preferred_alts (R i) y)"
         by (subst measure_Union) 
-           (auto simp: pareto_dom_def antisym strongly_preferred_def
+           (auto simp: Pareto_strict_iff antisym strongly_preferred_def
                        measure_pmf_single preferred_alts_def)
       finally have "lottery_prob q (preferred_alts (R i) y) > lottery_prob p (preferred_alts (R i) y)"
         using support by (simp add: prob_q pmf_positive)
-      with  pref_profile_wfD(1)[OF R_wf i] i
-        show "\<exists>i\<in>agents. \<not>p \<succeq>[SD(R i)] q" 
+      with i show "\<exists>i\<in>agents. \<not>p \<succeq>[SD(R i)] q" 
         by (auto intro!: bexI[of _ i] bexI[of _ y] dest!: bspec[of _ _ y] 
                  simp: not_le preferred_alts_altdef R.SD_preorder)
     qed simp_all
@@ -526,7 +502,8 @@ lemma strongly_strategyproof_profileI [intro]:
                                \<le> lottery_prob (sds R) (preferred_alts (R i) x)"
   shows "strongly_strategyproof_profile R i Ri'"
   unfolding strongly_strategyproof_profile_def
-  by rule (auto intro!: sds_wf assms pref_profile_wf_update pref_profile_wfD[OF assms(1)])
+  by rule (auto intro!: sds_wf assms pref_profile_wf.wf_update 
+                        pref_profile_wf.prefs_wf'[OF assms(1)])
 
 lemma strongly_strategyproof_imp_not_manipulable:
   assumes "strongly_strategyproof_profile R i Ri'"

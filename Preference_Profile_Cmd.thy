@@ -32,7 +32,7 @@ proof -
     by (rule eval_Collect_of_weak_ranking [symmetric])
   also from assms(2) have "the (map_of xs i) \<in> set (map snd xs)"
     by (cases "map_of xs i") (force simp: map_of_eq_None_iff dest: map_of_SomeD)+
-  from prefs_from_table_wfD(3)[OF assms(1) this]
+  from prefs_from_table_wfD(4)[OF assms(1) this]
     have "Collect (of_weak_ranking (the (map_of xs i)) x) = 
             {y\<in>alts. of_weak_ranking (the (map_of xs i)) x y}"
     by safe (force elim!: of_weak_ranking.cases)
@@ -574,7 +574,7 @@ lemma
   shows   "pmf (sds R1) (\<sigma> a) = pmf (sds R1) a"
   by (rule an_sds_automorphism_aux[OF R1_wf, of \<sigma> sds])
      (simp_all add: assms insert_commute insert_eq_iff add_ac
-        distincts_Cons anonymous_profile_permute[OF R1_wf] R1_eval)
+        distincts_Cons pref_profile_wf.anonymous_profile_permute[OF R1_wf] R1_eval)
 
 lemma
   defines "\<sigma> \<equiv> lists_succ [[a,b],[c,d]]"
@@ -582,7 +582,7 @@ lemma
   shows   "pmf (sds R1) (\<sigma> a) = pmf (sds R1) a"
   apply (rule an_sds_automorphism_aux[OF R1_wf, of \<sigma> sds])
   apply (simp_all add: assms lists_succ_permutes' insert_commute 
-           distincts_Cons anonymous_profile_permute[OF R1_wf])
+           distincts_Cons pref_profile_wf.anonymous_profile_permute[OF R1_wf])
   apply (simp add: R1_eval list_succ_simps add_ac)
   done
 

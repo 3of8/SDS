@@ -116,7 +116,8 @@ lemma mset_agents: "mset_set agents = {#A1, A2, A3, A4#}"
 
 lemma complete_preorder_on_altsI [simp]:
   "is_pref_profile R \<Longrightarrow> i \<in> agents \<Longrightarrow> complete_preorder_on alts (R i)"
-  by (rule pref_profile_wfD)
+  by (rule pref_profile_wf.prefs_wf')
+
 
 lemma pmf_of_set_in_lotteries [simp]:
   "A \<noteq> {} \<Longrightarrow> finite A \<Longrightarrow> pmf_of_set A \<in> lotteries \<longleftrightarrow> A \<subseteq> alts"
@@ -157,6 +158,10 @@ lemmas eval_SD =
   strongly_preferred_def measure_measure_pmf_finite SD_agenda_abs alt_iff agent_iff
   R1_eval R2_eval R3_eval R4_eval R5_eval R6_eval R7_eval R8_eval R9_eval R10_eval
   R11_eval R12_eval R13_eval
+
+lemma Pareto_strict_iff: 
+  "is_pref_profile R \<Longrightarrow> x \<prec>[Pareto(R)] y \<longleftrightarrow> (\<forall>i\<in>agents. R i x y) \<and> (\<exists>i\<in>agents. x \<prec>[R i] y)"
+  by (intro pref_profile_wf.Pareto_strict_iff[of agents])
   
   
   
@@ -171,7 +176,7 @@ proof -
   have "sds R1 = sds (permute_profile \<sigma> R1 \<circ> \<pi>)"
     by (simp add: R1_def \<sigma>_def \<pi>_def eval_profile_permutation)
   also from perm have "\<dots> = map_pmf \<sigma> (sds R1)"
-    by (simp add: anonymous neutral perm pref_profile_wf_permute)
+    by (simp add: anonymous neutral perm pref_profile_wf.wf_permute_alts)
   finally have "pmf (map_pmf \<sigma> (sds R1)) x = pmf (sds R1) x" for x by simp
   from this[of "\<sigma> b"] this[of "\<sigma> d"] perm 
     have [simp]: "?p a = ?p b" "?p c = ?p d"
@@ -205,7 +210,7 @@ proof -
   have "sds R2 = sds (permute_profile \<sigma> R2 \<circ> \<pi>)"
     by (simp add: R2_def \<sigma>_def \<pi>_def eval_profile_permutation)
   also from perm have "\<dots> = map_pmf \<sigma> (sds R2)"
-    by (simp add: anonymous neutral perm pref_profile_wf_permute)
+    by (simp add: anonymous neutral perm pref_profile_wf.wf_permute_alts)
   finally have "pmf (map_pmf \<sigma> (sds R2)) x = pmf (sds R2) x" for x by simp
   from this[of "\<sigma> b"] this[of "\<sigma> d"] perm 
     have [simp]: "?p a = ?p b" "?p c = ?p d"
@@ -243,7 +248,7 @@ proof -
   have R3_eq: "R3 = (permute_profile \<sigma> R3 \<circ> \<pi>)"
     by (simp add: R3_def \<sigma>_def \<pi>_def eval_profile_permutation)
   from perm have "pmf (map_pmf \<sigma> (sds R3)) x = pmf (sds R3) x" for x
-    by (subst R3_eq) (simp add: anonymous neutral perm pref_profile_wf_permute)
+    by (subst R3_eq) (simp add: anonymous neutral perm pref_profile_wf.wf_permute_alts)
   from this[of "\<sigma> b"] this[of "\<sigma> d"] perm 
     have [simp]: "?p c = ?p d"
     by (simp_all add: pmf_map_inj' permutes_inj) (simp_all add: \<sigma>_def list_succ_def)
@@ -321,16 +326,16 @@ qed
 
 lemma sds_R5 [simp]: "pmf (sds R5) c = 0" "pmf (sds R5) d = 0"
 proof -
-  have "pareto_dom R5 c b" "pareto_dom R5 d b"
-    by (rule pareto_domI; fastforce simp: agents R5_eval)+
+  have "c \<prec>[Pareto(R5)] b" "d \<prec>[Pareto(R5)] b"
+    by (auto simp: Pareto_strict_iff R5_eval agent_iff)
   thus "pmf (sds R5) c = 0" "pmf (sds R5) d = 0"
     by (auto intro: ex_post_efficient' R5_wf)
 qed
 
 lemma sds_R6 [simp]: "pmf (sds R6) c = 0" "pmf (sds R6) d = 0"
 proof -
-  have "pareto_dom R6 c b" "pareto_dom R6 d b"
-    by (rule pareto_domI; fastforce simp: agents R6_eval)+
+  have "c \<prec>[Pareto(R6)] b" "d \<prec>[Pareto(R6)] b"
+    by (auto simp: Pareto_strict_iff R6_eval agent_iff)
   thus "pmf (sds R6) c = 0" "pmf (sds R6) d = 0"
     by (auto intro: ex_post_efficient' R6_wf)
 qed
@@ -353,8 +358,8 @@ qed
 
 lemma sds_R7 [simp]: "pmf (sds R7) c = 0" "pmf (sds R7) d = 0"
 proof -
-  have "pareto_dom R7 c b" "pareto_dom R7 d b"
-    by (rule pareto_domI; fastforce simp: agents R7_eval)+
+  have "c \<prec>[Pareto(R7)] b" "d \<prec>[Pareto(R7)] b"
+    by (auto simp: Pareto_strict_iff R7_eval agent_iff)
   thus "pmf (sds R7) c = 0" "pmf (sds R7) d = 0"
     by (auto intro: ex_post_efficient' R7_wf)
 qed
@@ -384,7 +389,7 @@ proof -
   have R7_eq: "R7 = (permute_profile \<sigma> R7 \<circ> \<pi>)"
     by (simp add: R7_def \<sigma>_def \<pi>_def eval_profile_permutation)
   from perm have "pmf (map_pmf \<sigma> (sds R7)) x = pmf (sds R7) x" for x
-    by (subst R7_eq) (simp add: anonymous neutral perm pref_profile_wf_permute)
+    by (subst R7_eq) (simp add: anonymous neutral perm pref_profile_wf.wf_permute_alts)
   from this[of "\<sigma> a"] this[of "\<sigma> b"] perm 
     show "?p b = ?p a"
     by (simp_all add: pmf_map_inj' permutes_inj) (simp_all add: \<sigma>_def list_succ_def)
@@ -506,8 +511,8 @@ lemma sds_R8: "sds R8 = pmf_of_set {a, b}"
 
 lemma sds_R10_d [simp]: "pmf (sds R10) d = 0"
 proof (rule ex_post_efficient')
-  show "pareto_dom R10 d a"
-    unfolding pareto_dom_def by (simp add: R10_eval agents)
+  show "d \<prec>[Pareto(R10)] a"
+    by (auto simp: Pareto_strict_iff R10_eval agent_iff)
 qed simp_all
 
 lemma sds_R10_b [simp]: "pmf (sds R10) b = 1/2"
@@ -545,8 +550,8 @@ lemma sds_R10_a: "pmf (sds R10) a = 1/2 - pmf (sds R10) c"
 
 lemma sds_R11_d [simp]: "pmf (sds R11) d = 0"
 proof (rule ex_post_efficient')
-  show "pareto_dom R11 d a"
-    unfolding pareto_dom_def by (simp add: R11_eval agents)
+  show "d \<prec>[Pareto(R11)] a"
+    by (auto simp: Pareto_strict_iff R11_eval agent_iff)
 qed simp_all
 
 lemma sds_R11_b: "pmf (sds R11) b \<ge> 1/2"
@@ -565,8 +570,8 @@ qed
 
 lemma sds_R12_d [simp]: "pmf (sds R12) d = 0"
 proof (rule ex_post_efficient')
-  show "pareto_dom R12 d a"
-    unfolding pareto_dom_def by (simp add: R12_eval agents)
+  show "d \<prec>[Pareto(R12)] a"
+    by (auto simp: Pareto_strict_iff R12_eval agent_iff)
 qed simp_all
 
 lemma sds_R12_b [simp]: "pmf (sds R12) b = pmf (sds R12) c"
@@ -578,7 +583,7 @@ proof -
   have R12_eq: "R12 = (permute_profile \<sigma> R12 \<circ> \<pi>)"
     by (simp add: R12_def \<sigma>_def \<pi>_def eval_profile_permutation)
   from perm have "pmf (map_pmf \<sigma> (sds R12)) x = pmf (sds R12) x" for x
-    by (subst R12_eq) (simp add: anonymous neutral perm pref_profile_wf_permute)
+    by (subst R12_eq) (simp add: anonymous neutral perm pref_profile_wf.wf_permute_alts)
   from this[of "\<sigma> b"] perm show "?p b = ?p c"
     by (simp_all add: pmf_map_inj' permutes_inj) (simp_all add: \<sigma>_def list_succ_def)
 qed
@@ -652,8 +657,8 @@ lemma rd_R13: "RD R13 = pmf_of_multiset {#a,b,b,c#}"
 
 lemma sds_R13_d [simp]: "pmf (sds R13) d = 0"
 proof (rule ex_post_efficient')
-  show "pareto_dom R13 d a"
-    unfolding pareto_dom_def by (simp add: R13_eval agents)
+  show "d \<prec>[Pareto(R13)] a"
+    by (auto simp: Pareto_strict_iff R13_eval agent_iff)
 qed simp_all
 
 lemma sds_R13: "sds R13 = pmf_of_multiset {#a,b,b,c#}"
@@ -730,14 +735,14 @@ proof -
      if "pref_profile_wf agents' alts' R" for R
   proof
     fix i assume i: "i \<in> agents"
+    from that interpret pref_profile_wf agents' alts' R .
     show "complete_preorder_on alts (lift R i)"
     proof (cases "i \<in> agents'")
       assume "i \<notin> agents'"
       with i show ?thesis by unfold_locales (simp_all add: lift_def)
     next
       assume "i \<in> agents'"
-      then interpret R: complete_preorder_on alts' "R i"
-        using that by (intro pref_profile_wfD)
+      then interpret R: complete_preorder_on alts' "R i" by simp
       from i show "complete_preorder_on alts (lift R i)"
         by unfold_locales (insert R.complete, auto simp: R.refl lift_def intro: R.trans) 
     qed
@@ -756,16 +761,17 @@ proof -
   interpret SDS': social_decision_scheme agents' alts' sds'
   proof
     fix R assume R_wf: "SDS'.is_pref_profile R"
+    then interpret R: pref_profile_wf agents' alts' R .
+    from R_wf interpret R': pref_profile_wf agents alts "lift R" by simp
     have "pmf (sds' R) x = 0" if x: "x \<in> alts - alts'" for x
       unfolding sds'_def o_def
-    proof (rule ex_post_efficient'[OF _ pareto_domI])
+    proof (rule ex_post_efficient'[OF _ R'.Pareto_strictI'])
       fix i assume "i \<in> agents"
       with alts x show "a \<succeq>[lift R i] x"
         by (auto simp: lift_def alts'_def)
     next
-      from alts agents x show "\<exists>i\<in>agents. \<not>(a \<preceq>[lift R i] x)"
-        by (intro bexI[of _ A1]) (auto simp: lift_def alts'_def agents'_def)
-    qed (insert R_wf x alts, simp_all)
+      from alts x show "\<not>x \<succeq>[lift R A1] a" by (auto simp: lift_def agents'_def alts'_def)
+    qed (insert R_wf x alts agents, simp_all)
     moreover have "sds' R \<in> lotteries" unfolding sds'_def o_def
       by (intro sds_wf lift_wf R_wf)
     ultimately show "sds' R \<in> SDS'.lotteries"
@@ -808,12 +814,13 @@ proof -
        (if i \<in> agents' \<and> x \<in> alts' then SDS'.preferred_alts (R i) x else alts)"
     if "i \<in> agents" "x \<in> alts" "SDS'.is_pref_profile R" for R i x
   proof (cases "i \<in> agents'")
+    from that interpret pref_profile_wf agents' alts' R by simp
     assume i: "i \<in> agents'"
-    then interpret R: complete_preorder_on alts' "R i"
-      using that by (simp add: pref_profile_wfD)
+    then interpret Ri: complete_preorder_on alts' "R i"
+      using that by simp
     show ?thesis
-    using i that alts'_subset R.not_outside
-      by (auto simp: SDS'.preferred_alts_def preferred_alts_def lift_def R.refl)
+    using i that alts'_subset Ri.not_outside
+      by (auto simp: SDS'.preferred_alts_def preferred_alts_def lift_def Ri.refl)
   qed (auto simp: preferred_alts_def SDS'.preferred_alts_def lift_def that)
 
   interpret SDS': sd_efficient_sds agents' alts' sds'
@@ -823,6 +830,8 @@ proof -
     assume i: "i \<in> agents'"
     assume weak: "\<forall>i\<in>agents'. q \<succeq>[SD(R i)] sds' R"
     assume strong: "q \<succ>[SD(R i)] sds' R"
+    interpret R: pref_profile_wf agents' alts' R by fact
+    from R_wf interpret R': pref_profile_wf agents alts "lift R" by simp
 
     have pmf_zero: "pmf (sds' R) x = 0" if x: "x \<notin> alts'" for x
       using x SDS'.sds_wf[OF R_wf]
@@ -834,10 +843,10 @@ proof -
     moreover have "q \<succeq>[SD(lift R i)] sds' R" if i: "i \<in> agents" for i
     proof (cases "i \<in> agents'")
       assume i: "i \<in> agents'"
+      with agents'_subset have [simp]: "i \<in> agents" by blast
       show ?thesis
       proof (rule SD_agendaI) 
-        from i show "complete_preorder_on alts (lift R i)"
-          using agents'_subset by (intro pref_profile_wfD[OF lift_wf] R_wf) auto
+        show "complete_preorder_on alts (lift R i)" by simp
         fix x assume x: "x \<in> alts"
         show "SDS'.lottery_prob (sds' R) (preferred_alts (lift R i) x)
                 \<le> SDS'.lottery_prob q (preferred_alts (lift R i) x)"
@@ -846,30 +855,28 @@ proof -
            (auto simp: lift_preferred_alts lottery_prob_alts)
       qed (auto simp: SDS'.sds_wf R_wf q)
     next
-      assume "i \<notin> agents'"
-      with agents'_subset i q R_wf show ?thesis
-        by (intro SD_agendaI pref_profile_wfD[OF lift_wf])
+      assume i': "i \<notin> agents'"
+      from i have "complete_preorder_on alts (lift R i)" by simp
+      with i' agents'_subset i q R_wf show ?thesis
+        by (intro SD_agendaI)
            (auto intro!: SDS'.sds_wf lift_lottery simp: lift_def preferred_alts_def lottery_prob_alts)
     qed
     moreover have "\<exists>i\<in>agents. \<not>(q \<preceq>[SD(lift R i)] sds' R)"
     proof
       from i agents'_subset show i': "i \<in> agents" by blast
       from i interpret R: complete_preorder_on alts' "R i"
-        using R_wf by (simp add: i pref_profile_wfD)
+        using R_wf by (simp add: i)
       from strong have "\<not>(q \<preceq>[SD(R i)] sds' R)" 
         by (simp add: strongly_preferred_def)
       then obtain x where x: "x \<in> alts'" and
          "SDS'.lottery_prob (sds' R) (SDS'.preferred_alts (R i) x)
            < SDS'.lottery_prob q (SDS'.preferred_alts (R i) x)"
-        using q i R_wf
-          by (subst (asm) SDS'.SD_agenda)
-             (auto intro!: pref_profile_wfD[OF R_wf] SDS'.sds_wf)
+        using q i R_wf by (subst (asm) SDS'.SD_agenda) (auto intro!: SDS'.sds_wf)
       moreover from x alts'_subset have "x \<in> alts" by blast
       ultimately show "\<not>(q \<preceq>[SD(lift R i)] sds' R)"
         using q i R_wf alts'_subset agents'_subset
         by (subst SD_agenda) 
-           (auto intro!: bexI[of _ x] pref_profile_wfD[OF lift_wf[OF R_wf]] SDS'.sds_wf 
-                 simp: lift_preferred_alts not_le)
+           (auto intro!: bexI[of _ x] SDS'.sds_wf simp: lift_preferred_alts not_le)
     qed
     ultimately show False by (rule SD_efficientD)
   qed
@@ -881,6 +888,8 @@ proof -
     assume Ri': "complete_preorder_on alts' Ri'"
     assume manipulable: "SDS'.manipulable_profile R i Ri'"
     from i agents'_subset have i': "i \<in> agents" by blast
+    interpret R: pref_profile_wf agents' alts' R by fact
+    from R_wf interpret liftR: pref_profile_wf agents alts "lift R" by simp
    
     def lift_Ri' \<equiv> "\<lambda>x y. x \<in> alts \<and> y \<in> alts \<and> (x = y \<or> x \<notin> alts' \<or> (y \<in> alts' \<and> Ri' x y))"
     def S \<equiv> "(lift R)(i := lift_Ri')"
@@ -898,8 +907,8 @@ proof -
         by (intro ext) (auto simp: lift_def lift_Ri'_def S_def)
       finally show ?thesis using i i' Ri' alts'_subset R_wf
         unfolding manipulable_profile_def S_def [symmetric] strongly_preferred_def
-          by (subst (1 2) SD_agenda, intro pref_profile_wfD[OF lift_wf] R_wf i',
-              subst (asm) (1 2) SDS'.SD_agenda, intro pref_profile_wfD[OF R_wf] i)
+          by (subst (1 2) SD_agenda, simp only: liftR.prefs_wf',
+              subst (asm) (1 2) SDS'.SD_agenda, simp only: R.prefs_wf')
              (auto simp: lottery_prob_alts lift_preferred_alts strongly_preferred_def)
     qed
     moreover from R_wf i agents'_subset
