@@ -15,6 +15,7 @@ imports
   Order_Predicates
   Missing_PMF
   Stochastic_Dominance
+  SD_Inefficiency
 begin
 
 subsection \<open>Basic Social Choice definitions\<close>
@@ -318,6 +319,21 @@ proof unfold_locales
   }
   thus "set_pmf (sds R) \<inter> pareto_losers R = {}" by blast
 qed  
+
+lemma SD_inefficient_support:
+  assumes A: "A \<noteq> {}" "A \<subseteq> alts" and inefficient: "\<not>SD_efficient R (pmf_of_set A)" 
+  assumes wf: "is_pref_profile R" 
+  shows   "\<exists>x\<in>A. pmf (sds R) x = 0"
+proof (rule ccontr)
+  interpret pref_profile_wf agents alts R by fact
+  assume "\<not>(\<exists>x\<in>A. pmf (sds R) x = 0)"
+  with A have "set_pmf (pmf_of_set A) \<subseteq> set_pmf (sds R)"
+     by (subst set_pmf_of_set) (auto simp: set_pmf_eq intro: finite_subset[OF _ finite_alts])
+  from inefficient and this have "\<not>SD_efficient R (sds R)"
+    by (rule SD_inefficient_support_subset) (simp add: wf sds_wf)
+  moreover from SD_efficient wf have "SD_efficient R (sds R)" .
+  ultimately show False by contradiction
+qed
 
 end
 
