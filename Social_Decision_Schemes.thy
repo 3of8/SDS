@@ -59,7 +59,7 @@ text \<open>
 \<close>
 abbreviation lotteries where
   "lotteries \<equiv> lotteries_on alts"
-  
+
 text \<open>
   The probability that a lottery returns an alternative that is in the given set
 \<close>
