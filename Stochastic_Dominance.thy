@@ -21,6 +21,25 @@ lemma setsum_lessThan_Suc_shift:
   "(\<Sum>i<Suc n. f i) = f 0 + (\<Sum>i<n. f (Suc i))"
   by (induction n) (simp_all add: add_ac)
 
+lemma measure_return_pmf [simp]: "measure_pmf.prob (return_pmf x) A = indicator A x"
+proof -
+  have "ereal (measure_pmf.prob (return_pmf x) A) = 
+          emeasure (measure_pmf (return_pmf x)) A"
+    by (simp add: measure_pmf.emeasure_eq_measure)
+  also have "\<dots> = ereal (indicator A x)" by (simp add: ereal_indicator)
+  finally show ?thesis by simp
+qed
+
+lemma (in preorder_on) preferred_alts_refl [simp]: "x \<in> carrier \<Longrightarrow> x \<in> preferred_alts le x"
+  by (simp add: preferred_alts_def refl)
+
+lemma measure_pmf_ge_1: "measure_pmf.prob p A \<ge> 1 \<longleftrightarrow> measure_pmf.prob p A = 1"
+  by (auto intro!: antisym)
+
+lemma measure_pmf_posI: "x \<in> set_pmf p \<Longrightarrow> x \<in> A \<Longrightarrow> measure_pmf.prob p A > 0"
+  using measure_measure_pmf_not_zero[of p A] by (subst zero_less_measure_iff) blast
+
+
 (* END TODO *)
 
 
@@ -31,6 +50,10 @@ type_synonym 'alt lottery = "'alt pmf"
 
 definition lotteries_on :: "'a set \<Rightarrow> 'a lottery set" where
   "lotteries_on A = {p. set_pmf p \<subseteq> A}"
+
+lemma return_pmf_in_lotteries_on [simp,intro]: 
+  "x \<in> A \<Longrightarrow> return_pmf x \<in> lotteries_on A"
+  by (simp add: lotteries_on_def)
 
 
 subsection \<open>Definition of Stochastic Dominance\<close>
@@ -62,14 +85,14 @@ begin
 
 lemma SD_preorder:
    "p \<succeq>[SD(le)] q \<longleftrightarrow> p \<in> lotteries_on carrier \<and> q \<in> lotteries_on carrier \<and> 
-      (\<forall>x\<in>carrier. measure_pmf.prob p {y. y \<succeq>[le] x} \<ge> 
-                     measure_pmf.prob q {y. y \<succeq>[le] x})"
-  by (simp add: SD_def carrier_eq)  
+      (\<forall>x\<in>carrier. measure_pmf.prob p (preferred_alts le x) \<ge> 
+                     measure_pmf.prob q (preferred_alts le x))"
+  by (simp add: SD_def preferred_alts_def carrier_eq)  
 
 lemma SD_preorderI [intro?]: 
   assumes "p \<in> lotteries_on carrier" "q \<in> lotteries_on carrier"
   assumes "\<And>x. x \<in> carrier \<Longrightarrow>
-             measure_pmf.prob p {y. y \<succeq>[le] x} \<ge> measure_pmf.prob q {y. y \<succeq>[le] x}"
+             measure_pmf.prob p (preferred_alts le x) \<ge> measure_pmf.prob q (preferred_alts le x)"
   shows   "p \<succeq>[SD(le)] q"
   using assms by (simp add: SD_preorder)
 
@@ -77,7 +100,7 @@ lemma SD_preorderD:
   assumes "p \<succeq>[SD(le)] q"
   shows   "p \<in> lotteries_on carrier" "q \<in> lotteries_on carrier"
   and      "\<And>x. x \<in> carrier \<Longrightarrow>
-             measure_pmf.prob p {y. y \<succeq>[le] x} \<ge> measure_pmf.prob q {y. y \<succeq>[le] x}"
+             measure_pmf.prob p (preferred_alts le x) \<ge> measure_pmf.prob q (preferred_alts le x)"
   using assms unfolding SD_preorder by simp_all
 
 lemma SD_refl' [simp]: "p \<preceq>[SD(le)] p \<longleftrightarrow> p \<in> lotteries_on carrier"
@@ -86,8 +109,104 @@ lemma SD_refl' [simp]: "p \<preceq>[SD(le)] p \<longleftrightarrow> p \<in> lott
 lemma SD_is_preorder': "preorder_on (lotteries_on carrier) (SD(le))"
   using SD_is_preorder[of le] by (simp add: carrier_eq)
 
+lemma SD_singleton_left:
+  assumes "x \<in> carrier" "q \<in> lotteries_on carrier"
+  shows   "return_pmf x \<preceq>[SD(le)] q \<longleftrightarrow> (\<forall>y\<in>set_pmf q. x \<preceq>[le] y)"
+proof
+  assume SD: "return_pmf x \<preceq>[SD(le)] q"
+  from assms SD_preorderD(3)[OF SD, of x]
+    have "measure_pmf.prob (return_pmf x) (preferred_alts le x) \<le>
+            measure_pmf.prob q (preferred_alts le x)" by simp
+  also from assms have "measure_pmf.prob (return_pmf x) (preferred_alts le x) = 1"
+    by (simp add: indicator_def)
+  finally have "AE y in q. y \<succeq>[le] x"
+    by (simp add: measure_pmf_ge_1 measure_pmf.prob_eq_1 preferred_alts_def)
+  thus "\<forall>y\<in>set_pmf q. y \<succeq>[le] x" by (simp add: AE_measure_pmf_iff)
+next
+  assume A: "\<forall>y\<in>set_pmf q. x \<preceq>[le] y"
+  show "return_pmf x \<preceq>[SD(le)] q"
+  proof (rule SD_preorderI)
+    fix y assume y: "y \<in> carrier"
+    show "measure_pmf.prob (return_pmf x) (preferred_alts le y)
+              \<le> measure_pmf.prob q (preferred_alts le y)"
+    proof (cases "y \<preceq>[le] x")
+      case True
+      from True A have "measure_pmf.prob q (preferred_alts le y) = 1"
+        by (auto simp: AE_measure_pmf_iff measure_pmf.prob_eq_1 preferred_alts_def intro: trans)
+      thus ?thesis by simp
+    qed (simp_all add: preferred_alts_def indicator_def measure_nonneg)
+  qed (insert assms, simp_all add: lotteries_on_def)
+qed
+
+lemma SD_singleton_right:
+  assumes x: "x \<in> carrier" and q: "q \<in> lotteries_on carrier"
+  shows   "q \<preceq>[SD(le)] return_pmf x \<longleftrightarrow> (\<forall>y\<in>set_pmf q. y \<preceq>[le] x)"
+proof safe
+  fix y assume SD: "q \<preceq>[SD(le)] return_pmf x" and y: "y \<in> set_pmf q"
+  from y assms have [simp]: "y \<in> carrier" by (auto simp: lotteries_on_def)
+  
+  from y have "0 < measure_pmf.prob q (preferred_alts le y)"
+    by (rule measure_pmf_posI) simp_all
+  also have "\<dots> \<le> measure_pmf.prob (return_pmf x) (preferred_alts le y)"
+    by (rule SD_preorderD(3)[OF SD]) simp_all
+  finally show "y \<preceq>[le] x"
+    by (auto simp: indicator_def preferred_alts_def split: if_splits)
+next
+  assume A: "\<forall>y\<in>set_pmf q. y \<preceq>[le] x"
+  show "q \<preceq>[SD(le)] return_pmf x"
+  proof (rule SD_preorderI)
+    fix y assume y: "y \<in> carrier"
+    show "measure_pmf.prob q (preferred_alts le y) \<le>
+            measure_pmf.prob (return_pmf x) (preferred_alts le y)"
+    proof (cases "y \<preceq>[le] x")
+      case False
+      with A show ?thesis 
+        by (auto simp: preferred_alts_def indicator_def measure_le_0_iff 
+                       measure_pmf.prob_eq_0 AE_measure_pmf_iff intro: trans)
+    qed (simp_all add: indicator_def preferred_alts_def)
+  qed (insert assms, simp_all add: lotteries_on_def)
+qed
+
+lemma SD_strict_singleton_left:
+  assumes "x \<in> carrier" "q \<in> lotteries_on carrier"
+  shows   "return_pmf x \<prec>[SD(le)] q \<longleftrightarrow> (\<forall>y\<in>set_pmf q. x \<preceq>[le] y) \<and> (\<exists>y\<in>set_pmf q. (x \<prec>[le] y))"
+  using assms by (auto simp add: strongly_preferred_def SD_singleton_left SD_singleton_right)
+
+lemma SD_strict_singleton_right:
+  assumes "x \<in> carrier" "q \<in> lotteries_on carrier"
+  shows   "q \<prec>[SD(le)] return_pmf x \<longleftrightarrow> (\<forall>y\<in>set_pmf q. y \<preceq>[le] x) \<and> (\<exists>y\<in>set_pmf q. (y \<prec>[le] x))"
+  using assms by (auto simp add: strongly_preferred_def SD_singleton_left SD_singleton_right)
+
+lemma SD_singleton [simp]:
+  "x \<in> carrier \<Longrightarrow> y \<in> carrier \<Longrightarrow> return_pmf x \<preceq>[SD(le)] return_pmf y \<longleftrightarrow> x \<preceq>[le] y"
+  by (subst SD_singleton_left) (simp_all add: lotteries_on_def)
+
+lemma SD_strict_singleton [simp]:
+  "x \<in> carrier \<Longrightarrow> y \<in> carrier \<Longrightarrow> return_pmf x \<prec>[SD(le)] return_pmf y \<longleftrightarrow> x \<prec>[le] y"
+  by (simp add: strongly_preferred_def)
+
 end
 
+context pref_profile_wf
+begin
+
+context
+fixes i assumes i: "i \<in> agents"
+begin
+
+interpretation Ri: preorder_on alts "R i" by (simp add: i)
+
+lemmas SD_singleton_left = Ri.SD_singleton_left
+lemmas SD_singleton_right = Ri.SD_singleton_right
+lemmas SD_strict_singleton_left = Ri.SD_strict_singleton_left
+lemmas SD_strict_singleton_right = Ri.SD_strict_singleton_right
+lemmas SD_singleton = Ri.SD_singleton
+lemmas SD_strict_singleton = Ri.SD_strict_singleton
+
+end
+end
+
+lemmas (in pref_profile_wf) [simp] = SD_singleton SD_strict_singleton
 
 
 subsection \<open>Stochastic Dominance for preference profiles\<close>
@@ -161,12 +280,52 @@ proof -
   from A B show ?thesis unfolding SD_efficient_auxdef 
     by (simp only: A [symmetric] B [symmetric] Let_def)
 qed
+
+lemma SD_inefficientI:
+  assumes "q \<in> lotteries_on alts" "\<And>i. i \<in> agents \<Longrightarrow> q \<succeq>[SD(R i)] p" 
+          "i \<in> agents" "q \<succ>[SD(R i)] p"
+  shows   "\<not>SD_efficient R p" 
+  using assms unfolding SD_efficient_def by blast
+
+lemma SD_inefficientI':
+  assumes "q \<in> lotteries_on alts" "\<And>i. i \<in> agents \<Longrightarrow> q \<succeq>[SD(R i)] p" 
+          "\<exists>i \<in> agents. q \<succ>[SD(R i)] p"
+  shows   "\<not>SD_efficient R p" 
+  using assms unfolding SD_efficient_def by blast
+
+lemma SD_inefficientE:
+  assumes "\<not>SD_efficient R p" 
+  obtains q i where
+    "q \<in> lotteries_on alts" "\<And>i. i \<in> agents \<Longrightarrow> q \<succeq>[SD(R i)] p" 
+    "i \<in> agents" "q \<succ>[SD(R i)] p"
+  using assms unfolding SD_efficient_def by blast
    
 lemma SD_efficientD:
   assumes "SD_efficient R p" "q \<in> lotteries_on alts" 
       and "\<And>i. i \<in> agents \<Longrightarrow> q \<succeq>[SD(R i)] p" "\<exists>i\<in>agents. \<not>(q \<preceq>[SD(R i)] p)"
   shows False
   using assms unfolding SD_efficient_def strongly_preferred_def by blast
+
+lemma SD_efficient_singleton_iff:
+  assumes [simp]: "x \<in> alts"
+  shows   "SD_efficient R (return_pmf x) \<longleftrightarrow> x \<notin> pareto_losers R"
+proof -
+  {
+    assume x: "x \<in> pareto_losers R"
+    from pareto_losersE[OF x] guess y . note y = this
+    from y have "\<not>SD_efficient R (return_pmf x)"
+      by (intro SD_inefficientI'[of "return_pmf y"]) (force simp: Pareto_strict_iff)+
+  } moreover {
+    assume "\<not>SD_efficient R (return_pmf x)"
+    from SD_inefficientE[OF this] guess q i . note q = this
+    moreover from q obtain y where "y \<in> set_pmf q" "y \<succ>[R i] x"
+      by (auto simp: SD_strict_singleton_left)
+    ultimately have "y \<succ>[Pareto(R)] x"
+      by (fastforce simp: Pareto_strict_iff SD_singleton_left)
+    hence "x \<in> pareto_losers R" by simp
+  }
+  ultimately show ?thesis by blast
+qed  
 
 end
 

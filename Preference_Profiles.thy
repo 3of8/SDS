@@ -138,7 +138,7 @@ text \<open>
 definition pareto_losers :: "('agent, 'alt) pref_profile \<Rightarrow> 'alt set" where
   "pareto_losers R = {x. \<exists>y. y \<succ>[Pareto(R)] x}"
 
-lemma pareto_losersI [intro?]: "y \<succ>[Pareto(R)] x \<Longrightarrow> x \<in> pareto_losers R"
+lemma pareto_losersI [intro?, simp]: "y \<succ>[Pareto(R)] x \<Longrightarrow> x \<in> pareto_losers R"
   by (auto simp: pareto_losers_def)
 
 context pref_profile_wf
@@ -219,13 +219,6 @@ end
 
 
 subsection \<open>Preferred alternatives\<close>
-
-definition preferred_alts :: "'alt relation \<Rightarrow> 'alt \<Rightarrow> 'alt set" where
-  "preferred_alts R x = {y. y \<succeq>[R] x}"
-
-lemma (in preorder_on) preferred_alts_altdef:
-  "preferred_alts le x = {y\<in>carrier. y \<succeq>[le] x}"
-  by (auto simp: preferred_alts_def intro: not_outside)
 
 context pref_profile_wf
 begin

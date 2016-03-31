@@ -931,4 +931,12 @@ lemma weak_ranking_eq_iff:
   shows   "weak_ranking R1 = weak_ranking R2 \<longleftrightarrow> R1 = R2"
   using assms weak_ranking_eqD by auto
 
+
+definition preferred_alts :: "'alt relation \<Rightarrow> 'alt \<Rightarrow> 'alt set" where
+  "preferred_alts R x = {y. y \<succeq>[R] x}"
+
+lemma (in preorder_on) preferred_alts_altdef:
+  "preferred_alts le x = {y\<in>carrier. y \<succeq>[le] x}"
+  by (auto simp: preferred_alts_def intro: not_outside)
+
 end
