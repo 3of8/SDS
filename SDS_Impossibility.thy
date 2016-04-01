@@ -67,7 +67,7 @@ preference_profile
     and R11 = A1: c, a, [b, d]     A2: b, [a, c], d     A3: a, d, [b, c]    A4: [b, c], a, d
     and R12 = A1: c, [a, b], d     A2: b, [a, c], d     A3: a, d, [b, c]    A4: [b, c], a, d
     and R13 = A1: c, [a, b], d     A2: b, [a, c], d     A3: a, d, [b, c]    A4: b, c, a, d
-  by (simp_all add: agents alts insert_eq_iff)
+  by (simp_all add: agents alts)
 
 ML_val \<open>
   let

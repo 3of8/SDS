@@ -200,7 +200,10 @@ val cycles : ('a * 'a -> bool) -> 'a permutation -> 'a list list
 val find_an_isomorphisms : profile * profile -> term permutation Seq.seq
 val find_an_isomorphism : profile * profile -> term permutation option
 val find_an_automorphisms : profile -> (term * term) list
+
+val preferred_alts : prefs -> term -> term list
 val pareto_pairs : profile -> (term * term) list
+val pareto_losers : profile -> term list
 
 val mk_inefficiency_lp : profile -> support -> (string list * string * int) list
 val find_inefficiency_witness : profile -> support -> lottery option
@@ -300,8 +303,8 @@ fun preferred_alts r x =
   end
 
 
-fun fold1 f [] = raise Match
-  | fold1 f (x::xs) = fold f xs x
+(*fun fold1 f [] = raise Match
+  | fold1 f (x::xs) = fold f xs x*)
 
 fun pareto_pairs p =
   let
@@ -334,6 +337,8 @@ fun pareto_pairs p =
     |> filter_out_symmetric
     |> filter_out_trans
   end
+
+val pareto_losers = pareto_pairs #> map snd #> distinct op aconv
     
 
 (*
@@ -367,8 +372,8 @@ fun mk_inefficiency_lp p support =
     fun mk_lottery_var x = "q" ^ the (AList.lookup op aconv alt_ids x)
     fun mk_slack_var i j = "r" ^ Int.toString i ^ "_" ^ Int.toString j
 
-    fun mk_ineqs_for_agent acc _ [] _ i = acc
-      | mk_ineqs_for_agent acc _ [_] _ i = acc
+    fun mk_ineqs_for_agent acc _ [] _ _ = acc
+      | mk_ineqs_for_agent acc _ [_] _ _ = acc
       | mk_ineqs_for_agent acc (lhs, rhs) (xs::xss) j i =
           let
             val lhs' = map mk_lottery_var xs @ lhs

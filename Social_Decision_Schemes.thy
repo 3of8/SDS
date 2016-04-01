@@ -258,68 +258,16 @@ sublocale ex_post_efficient_sds
 proof unfold_locales
   fix R :: "('agent, 'alt) pref_profile" assume R_wf: "is_pref_profile R"
   interpret pref_profile_wf agents alts R by fact
-  def [simp]: p \<equiv> "sds R"
-  {
-    fix x assume support: "x \<in> set_pmf (sds R)" and loser: "x \<in> pareto_losers R"
-    from support sds_wf R_wf have [simp]: "x \<in> alts" by (auto simp: lotteries_on_def)
-    from loser obtain y where y: "y \<in> alts" "y \<succ>[Pareto(R)] x" by (cases rule: pareto_losersE)
-    note [simp] = \<open>y \<in> alts\<close>
+  from R_wf show "set_pmf (sds R) \<inter> pareto_losers R = {}"
+    by (intro SD_efficient_no_pareto_loser SD_efficient sds_wf)
+qed
 
-    let ?f = "(\<lambda>z. if z = x then y else z)"
-    def q \<equiv> "map_pmf ?f p"
-    from sds_wf[OF R_wf] have [simp]: "q \<in> lotteries"
-      by (auto simp: lotteries_on_def q_def)
-    have prob_q: "lottery_prob q (preferred_alts (R i) z) = 
-                    lottery_prob p (?f -` preferred_alts (R i) z)" for i z
-      unfolding q_def by simp
-    
-    from SD_efficient R_wf have "SD_efficient R p" by simp
-    hence False
-    proof (rule SD_efficientD)
-      fix i assume i: "i \<in> agents"
-      from i interpret R: finite_complete_preorder_on alts "R i"
-        using R_wf by simp
-      
-      have "lottery_prob q (preferred_alts (R i) z)  \<ge> lottery_prob p (preferred_alts (R i) z)" 
-        if [simp]: "z \<in> alts" for z
-      proof (cases "x \<succeq>[R i] z")
-        assume not_xz: "\<not>(x \<succeq>[R i] z)"
-        hence "lottery_prob p (preferred_alts (R i) z) \<le> 
-                 lottery_prob p (?f -` preferred_alts (R i) z)"
-          by (intro measure_pmf.finite_measure_mono) (auto simp: preferred_alts_def)
-        with prob_q show ?thesis by simp
-      next
-        assume xz: "x \<succeq>[R i] z"
-        with y i have yz: "y \<succeq>[R i] z"
-          by (intro R.trans[of z x y]) (auto simp: Pareto_strict_iff)
-        from xz yz have "?f -` preferred_alts (R i) z = preferred_alts (R i) z" 
-          by (auto simp: preferred_alts_def)
-        with prob_q show ?thesis by simp
-      qed
-      with sds_wf R_wf show "q \<succeq>[SD(R i)] p" 
-        by (intro SD_pref_profileI) (simp_all add: preferred_alts_def i)
-    next
-      from y obtain i where i: "i \<in> agents" and y: "y \<succ>[R i] x"
-        by (auto simp: Pareto_strict_iff)
-      from i interpret R: finite_complete_preorder_on alts "R i"
-        using R_wf by simp
-      from y i have "?f -` preferred_alts (R i) y = {x} \<union> preferred_alts (R i) y"
-        by (auto simp: Pareto_strict_iff strongly_preferred_def R.refl preferred_alts_def)
-      also from y i have "lottery_prob p \<dots> = 
-            pmf (sds R) x + lottery_prob (sds R) (preferred_alts (R i) y)"
-        by (subst measure_Union) 
-           (auto simp: Pareto_strict_iff antisym strongly_preferred_def
-                       measure_pmf_single preferred_alts_def)
-      finally have "lottery_prob q (preferred_alts (R i) y) > lottery_prob p (preferred_alts (R i) y)"
-        using support by (simp add: prob_q pmf_positive)
-      with i show "\<exists>i\<in>agents. \<not>p \<succeq>[SD(R i)] q" 
-        by (auto intro!: bexI[of _ i] bexI[of _ y] dest!: bspec[of _ _ y] 
-                 simp: not_le preferred_alts_def R.SD_preorder)
-    qed simp_all
-  }
-  thus "set_pmf (sds R) \<inter> pareto_losers R = {}" by blast
-qed  
 
+text \<open>
+  The following rule can be used to derive facts from inefficient supports:
+  If a set of alternatives is an inefficient support, at least one of the 
+  alternatives in it must receive probability 0.
+\<close>
 lemma SD_inefficient_support:
   assumes A: "A \<noteq> {}" "A \<subseteq> alts" and inefficient: "\<not>SD_efficient R (pmf_of_set A)" 
   assumes wf: "is_pref_profile R" 

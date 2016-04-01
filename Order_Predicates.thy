@@ -423,12 +423,12 @@ lemma is_weak_ranking_append:
 
 lemma is_weak_ranking_Cons:
   "is_weak_ranking (x # xs) \<longleftrightarrow> 
-      x \<noteq> {} \<and> is_weak_ranking xs \<and> x \<notin> set xs \<and> x \<inter> \<Union>set xs = {}"
-  using is_weak_ranking_append[of "[x]" xs] by simp
+      x \<noteq> {} \<and> is_weak_ranking xs \<and> x \<inter> \<Union>set xs = {}"
+  using is_weak_ranking_append[of "[x]" xs] by auto
 
 lemma is_finite_weak_ranking_Cons:
   "is_finite_weak_ranking (x # xs) \<longleftrightarrow> 
-      x \<noteq> {} \<and> finite x \<and> is_finite_weak_ranking xs \<and> x \<notin> set xs \<and> x \<inter> \<Union>set xs = {}"
+      x \<noteq> {} \<and> finite x \<and> is_finite_weak_ranking xs \<and> x \<inter> \<Union>set xs = {}"
   by (auto simp add: is_finite_weak_ranking_def is_weak_ranking_Cons)
 
 primrec is_weak_ranking_aux where

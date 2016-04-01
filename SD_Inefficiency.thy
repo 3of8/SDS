@@ -122,6 +122,22 @@ lemma SD_efficient_iff:
      (simp, subst set_pmf_of_set,
       auto simp: set_pmf_not_empty lotteries_on_def intro: finite_subset[OF _ finite_alts])
 
+lemma SD_efficient_no_pareto_loser:
+  assumes efficient: "SD_efficient R p" and p_wf: "p \<in> lotteries_on alts"
+  shows   "set_pmf p \<inter> pareto_losers R = {}"
+proof -
+  have "x \<notin> pareto_losers R" if x: "x \<in> set_pmf p" for x
+  proof -
+    from x have "set_pmf (return_pmf x) \<subseteq> set_pmf p" by auto
+    from efficient this p_wf have "SD_efficient R (return_pmf x)"
+      by (rule SD_efficient_support_subset)
+    moreover from assms x have "x \<in> alts" by (auto simp: lotteries_on_def)
+    ultimately show "x \<notin> pareto_losers R" by (simp add: SD_efficient_singleton_iff)
+  qed
+  thus ?thesis by blast
+qed
+  
+
 end
 
 

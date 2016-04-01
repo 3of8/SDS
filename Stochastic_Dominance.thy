@@ -424,7 +424,7 @@ proof safe
     by (auto simp: xs_def lotteries_on_def set_pmf_not_empty)
   hence n: "length xs = Suc n" and xs_nonempty: "xs \<noteq> []" by (auto simp add: n_def)
   have SD': "?pref p (f i) \<le> ?pref q (f i)" if "i < length xs" for i
-    using f'[OF that] SD by (auto simp: SD_preorder)
+    using f'[OF that] SD by (auto simp: SD_preorder preferred_alts_def)
   have f_le: "le (f i) (f j) \<longleftrightarrow> i \<ge> j" if "i < length xs" "j < length xs" for i j
     using that weak_ranking_index_unique[OF xs_wf that(1) _ f]
                weak_ranking_index_unique[OF xs_wf that(2) _ f]
@@ -589,7 +589,7 @@ next
                        measure_pmf.prob q {y. le x y}"
       by (simp add: field_simps)
   }
-  with assms show "p \<preceq>[SD(le)] q" unfolding SD_preorder by blast
+  with assms show "p \<preceq>[SD(le)] q" unfolding SD_preorder preferred_alts_def by blast
 qed
 
 end

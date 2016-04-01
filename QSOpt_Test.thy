@@ -43,26 +43,6 @@ fun lp_constr_to_qsopt_constr n (lhs, slack, rhs) =
     (lhs', EQ, Rat.from_int rhs)
   end
 
-(*
-fun mk_inefficiency_lp_cplex p lottery =
-  let
-    val constrs = mk_inefficiency_lp p lottery
-    val alts = alts_of_profile p
-    val alt_ids = alts ~~ List.tabulate (length alts, Int.toString);
-    fun mk_lottery_var x = "q" ^ the (AList.lookup op aconv alt_ids x)
-    val lottery_vars = map (cplexVar o mk_lottery_var) alts
-    val slack_vars = map (fn (_,x,_) => cplexVar x) constrs
- 
-    val constrs' = constrs |> map (fn x => (NONE, lp_constr_to_cplex_constr x))
-    val eq = (NONE, cplexConstr (cplexEq, (cplexSum lottery_vars, cplexNum "1")))
-    val bnds = map (fn x => cplexBound (x, cplexGeq, cplexNum "0")) 
-          (lottery_vars @ slack_vars)
-    val goal = cplexMaximize (cplexSum slack_vars)
-  in
-    cplexProg ("foo", goal, eq :: constrs', bnds)
-  end
-*)
-
 fun mk_inefficiency_lp_qsopt p support =
   let
     val constrs = mk_inefficiency_lp p support
@@ -112,10 +92,9 @@ fun power_set xs =
 
 fun find_minimal_inefficient_supports p =
   let
-    val alts = alts_of_profile p
-    val n = length alts
+    val alts = subtract op aconv (pareto_losers p) (alts_of_profile p)
     fun go supp acc =
-      if List.null supp orelse length supp = n orelse
+      if List.null supp orelse
             member (fn (a, b) => subset op aconv (fst b, a)) acc supp then
         acc
       else 
@@ -134,30 +113,26 @@ end
 
 val p = let val {raw = raw, ...} = get_info @{term R} @{context} in raw end
 
+val cterm = Thm.cterm_of @{context}
+
 fun find_inefficiency_witness' p support =
-  find_inefficiency_witness p support |> Option.map (map (apfst (Thm.cterm_of @{context})))
-\<close>
+  find_inefficiency_witness p support |> Option.map (map (apfst cterm))
 
-declare [[ML_exception_trace]]
+val find_minimal_inefficient_supports' = 
+  find_minimal_inefficient_supports
+  #> map (fn (a,b) => (map cterm a, map (apfst cterm) b))
+\<close>
 
 ML \<open>
-val wit = find_inefficiency_witness p [@{term "b"}, @{term "c"}]
-
-(*
-val prog = mk_inefficiency_lp_qsopt p [@{term c}, @{term b}]
-val _ = Rat_Linear_Program.save_program "/tmp/foo.lp" prog
-val sol = Rat_Linear_Program.solve_program prog
-*)
+val wit = find_inefficiency_witness' p [@{term "c"}, @{term "d"}, @{term "b"}]
 \<close>
-
-ML_val \<open>split_lines "asdf\nfoobar"\<close>
 
 ML \<open>
-
-
-
+val wit = find_inefficiency_witness' p [@{term "b"}, @{term "c"}]
 \<close>
 
-
+ML \<open>
+val foo = find_minimal_inefficient_supports' p
+\<close>
 
 end

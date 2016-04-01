@@ -273,7 +273,6 @@ in
     end
 
 
-fun tmp_file s = Path.implode (Path.expand (File.tmp_path (Path.basic s)));
 fun wrap s = "\""^s^"\"";
 
 val read_result = gen_read_result LP_Params.read
@@ -287,26 +286,28 @@ fun read_result_file filename =
     read_result s
   end
 
-
-
 fun solve_program prog =
     let
     val name = string_of_int (Time.toMicroseconds (Time.now ()))
-    val lpname = tmp_file (name^".lp")
-    val resultname = tmp_file (name^".sol")
+    val lpname = Path.implode (Path.expand (Isabelle_System.create_tmp_path name ".lp"))
+    val resultname = Path.implode (Path.expand (Isabelle_System.create_tmp_path name ".sol"))
     val _ = save_program lpname prog
     val esolver_path = getenv "QSOPT_EXACT_PATH"
     val esolver = if esolver_path = "" then "esolver" else esolver_path
     val command =  wrap esolver ^ " -O " ^ wrap resultname ^ " " ^ wrap lpname
-    val _ = #1 (Isabelle_System.bash_output command)
+    val {err = err, rc = rc, ...} = Bash.process command
     in
-    let
-        val result = read_result_file resultname
-        val _ = OS.FileSys.remove lpname
-        val _ = OS.FileSys.remove resultname
-    in
-        result
-    end
+      if rc <> 0 then
+        raise Fail ("QSopt_exact returned with an error (return code " ^ 
+          Int.toString rc ^ "):\n" ^ err)
+      else
+        let
+            val result = read_result_file resultname
+            val _ = OS.FileSys.remove lpname
+            val _ = OS.FileSys.remove resultname
+        in
+            result
+        end
     end
 
 end
