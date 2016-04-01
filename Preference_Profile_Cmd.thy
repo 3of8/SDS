@@ -15,9 +15,13 @@ imports
   Social_Decision_Schemes
   Preference_Profiles
   Missing_Permutations
+  QSOpt_Exact
 keywords
   "preference_profile" :: thy_goal
 begin
+
+ML_file "preference_profiles.ML"
+
 
 context agenda
 begin
@@ -162,15 +166,10 @@ qed
 
 ML \<open>
 
-signature PREFERENCE_PROFILES =
+signature PREFERENCE_PROFILES_CMD =
 sig
 
-type prefs
-type profile
 type info
-type support
-type lottery
-type 'a permutation
 
 val pref_profileT : typ -> typ -> typ
 
@@ -185,209 +184,12 @@ val get_info : term -> Proof.context -> info
 val add_info : term -> info -> Context.generic -> Context.generic
 val transform_info : info -> morphism -> info
 
-val eq_prefs : (prefs * prefs) -> bool
-val equiv_profile_anonymity : (profile * profile) -> bool
-
-val agents_of_profile : profile -> term list
-val alts_of_profile : profile -> term list
-
-val apply_permutation : ('a * 'a -> bool) -> 'a permutation -> 'a -> 'a
-val is_identity : ('a * 'a -> bool) -> 'a permutation -> bool
-val fixpoints : ('a * 'a -> bool) -> 'a permutation -> 'a list
-val permutations : ('a * 'a -> bool) -> 'a list -> 'a permutation Seq.seq
-val cycles : ('a * 'a -> bool) -> 'a permutation -> 'a list list
-
-val find_an_isomorphisms : profile * profile -> term permutation Seq.seq
-val find_an_isomorphism : profile * profile -> term permutation option
-val find_an_automorphisms : profile -> (term * term) list
-
-val preferred_alts : prefs -> term -> term list
-val pareto_pairs : profile -> (term * term) list
-val pareto_losers : profile -> term list
-
-val mk_inefficiency_lp : profile -> support -> (string list * string * int) list
-val find_inefficiency_witness : profile -> support -> lottery option
-
 end
 
-structure Preference_Profiles : PREFERENCE_PROFILES =
+structure Preference_Profiles_Cmd : PREFERENCE_PROFILES_CMD =
 struct
 
-type prefs = term list list
-type profile = (term * prefs) list
-type 'a permutation = ('a * 'a) list
-type support = term list
-type lottery = (term * string) list
-
-val eq_prefs = eq_list (eq_set (op aconv))
-
-fun equiv_profile_anonymity xy = 
-  let
-    val xy = apply2 (map snd) xy
-  in
-    submultiset eq_prefs xy andalso submultiset eq_prefs (swap xy)
-  end
-  
-val agents_of_profile = map fst
-
-val alts_of_profile = List.concat o snd o hd
-
-
-fun fixpoints eq xs = xs |> filter eq |> map fst
-
-fun apply_permutation _ [] x = x
-  | apply_permutation eq ((x,y)::p) x' = if eq (x,x') then y else apply_permutation eq p x'
-
-val is_identity = forall
-
-fun cycles eq =
-  let
-    fun go3 _ _ [] = raise Match
-      | go3 acc a ((b,c) :: xs) =
-         if eq (a,b) then (c, acc @ xs) else go3 ((b,c) :: acc) a xs
-    fun go2 cyc a b xs =
-      if eq (a,b) then 
-        (cyc, xs) 
-      else case go3 [] b xs of
-        (c, xs) => go2 (b::cyc) a c xs
-    fun go1 acc [] = acc
-      | go1 acc ((a,b) :: xs) = 
-          case go2 [a] a b xs of (cyc, xs') => go1 (rev cyc :: acc) xs'
-  in
-    rev o go1 []
-  end    
-
-fun permutations eq xs = 
-  let
-    fun go acc [] = Seq.single acc
-      | go acc xs = Seq.maps (fn x => go (x::acc) (remove1 eq x xs)) (Seq.of_list xs)
-  in
-    Seq.map (fn ys => xs ~~ ys) (go [] xs)
-  end
-
-fun find_an_isomorphisms (xs, ys) =
-  let
-    fun is_iso p = 
-      equiv_profile_anonymity (map (fn (x, yss) => (x, map (map p) yss)) xs, ys)
-  in
-    permutations (op aconv) (alts_of_profile xs)
-    |> Seq.filter (is_iso o apply_permutation (op aconv))
-  end
-
-val find_an_isomorphism =
-  find_an_isomorphisms #> Seq.pull #> Option.map fst
-
-fun seq_fold f s acc =
-  case Seq.pull s of
-    NONE => acc
-  | SOME (x,s) => seq_fold f s (f x acc)
-
-fun find_an_automorphisms xs =
-  let
-    fun eq ((a,b),(c,d)) = (a aconv c andalso b aconv d) orelse (a aconv d andalso b aconv c)
-  in
-    (xs, xs) 
-    |> find_an_isomorphisms
-    |> Seq.map (filter_out (op aconv))
-    |> (fn s => seq_fold (fn x => fn y => merge eq (x,y)) s [])
-  end
-
-
-fun preferred_alts r x =
-  let
-    fun go acc [] = acc
-      | go acc (xs::xss) =
-          if member op aconv xs x then (xs @ acc) else go (xs @ acc) xss
-  in
-    go [] r
-  end
-
-
-(*fun fold1 f [] = raise Match
-  | fold1 f (x::xs) = fold f xs x*)
-
-fun pareto_pairs p =
-  let
-    val alts = alts_of_profile p
-    fun dom_set x =
-      let
-        fun go [] = []
-          | go (xs::xss) = 
-              if member op aconv xs x then List.concat (xs::xss) else go xss
-      in
-        fold (fn (_, xss) => inter op aconv (go xss)) p alts
-      end
-    fun filter_out_symmetric xs =
-      filter_out (fn (x,y) => member (eq_pair op aconv op aconv) xs (y, x)) xs
-    val filter_out_trans =
-      let
-        fun go acc [] = acc
-          | go acc (x::xs) =
-              if member (op aconv o apply2 snd) acc x then 
-                go acc xs 
-              else 
-                go (x::acc) xs
-      in
-        go []
-      end
-  in
-    alts
-    |> map (fn x => map (fn y => (x, y)) (dom_set x))
-    |> List.concat
-    |> filter_out_symmetric
-    |> filter_out_trans
-  end
-
-val pareto_losers = pareto_pairs #> map snd #> distinct op aconv
-    
-
-(*
-fun mk_inefficiency_lp p lottery =
-  let
-    val alts = alts_of_profile p
-    val alt_ids = alts ~~ List.tabulate (length alts, Int.toString);
-    val lottery_prob = AList.lookup op aconv lottery #> the
-    fun mk_lottery_var x = "q" ^ the (AList.lookup op aconv alt_ids x)
-    fun mk_slack_var i j = "r" ^ Int.toString i ^ "_" ^ Int.toString j
-
-    fun mk_ineqs_for_agent acc _ [] _ i = acc
-      | mk_ineqs_for_agent acc _ [_] _ i = acc
-      | mk_ineqs_for_agent acc (lhs, rhs) (xs::xss) j i =
-          let
-            val lhs' = map mk_lottery_var xs @ lhs
-            val rhs' = map lottery_prob xs @ rhs
-          in
-            mk_ineqs_for_agent ((lhs',mk_slack_var i j,rhs')::acc) (lhs',rhs') xss (j+1) i
-          end
-  in
-    fold (fn (_, r) => fn (i,acc) => (i+1, mk_ineqs_for_agent acc ([],[]) r 0 i)) p (0, []) |> snd
-  end
-*)
-
-fun mk_inefficiency_lp p support =
-  let
-    val alts = alts_of_profile p
-    val alt_ids = alts ~~ List.tabulate (length alts, Int.toString);
-    val in_support = member op aconv support
-    fun mk_lottery_var x = "q" ^ the (AList.lookup op aconv alt_ids x)
-    fun mk_slack_var i j = "r" ^ Int.toString i ^ "_" ^ Int.toString j
-
-    fun mk_ineqs_for_agent acc _ [] _ _ = acc
-      | mk_ineqs_for_agent acc _ [_] _ _ = acc
-      | mk_ineqs_for_agent acc (lhs, rhs) (xs::xss) j i =
-          let
-            val lhs' = map mk_lottery_var xs @ lhs
-            val rhs' = length (filter in_support xs) + rhs
-          in
-            mk_ineqs_for_agent ((lhs',mk_slack_var i j,rhs')::acc) (lhs',rhs') xss (j+1) i
-          end
-  in
-    fold (fn (_, r) => fn (i,acc) => (i+1, mk_ineqs_for_agent acc ([],0) r 0 i)) p (0, []) |> snd
-  end
-
-fun find_inefficiency_witness p supp =
-  undefined ()
-
+open Preference_Profiles
 
 
 type info = 
@@ -572,6 +374,8 @@ preference_profile
   alts:   "{a, b, c, d}"
   where R1  = A1: [a,c], [b,d]     A2: [b,d], [a,c]     A3: [a,d], b, c     A4: [b,c], a, d
     and R2  = A1: [a,c], [b,d]     A2: [b,d], [a,c]     A3: a, d, [b,c]     A4: b, c, [a, d]
+    and R3  = A1: [a,c], [b,d]     A2: [b,d], [a,c]     A3: [a,d], b, c     A4: d, c, a, b
+    and R4  = A1: [a,c], [b,d]     A2: [b,d], [a,c]     A3: [c,b], d, a     A4: b, a, c, d
 by (simp_all add: insert_eq_iff)
 
 lemma "anonymous_profile {A1, A2, A3, A4} R1 = 
@@ -602,13 +406,18 @@ ML_val \<open>
   
   let
     val ctxt = @{context}
-    val {raw = raw1, ...} = Preference_Profiles.get_info @{term R1} ctxt
-    val {raw = raw2, ...} = Preference_Profiles.get_info @{term R2} ctxt
+    val {raw = raw1, ...} = Preference_Profiles_Cmd.get_info @{term R1} ctxt
+    val {raw = raw2, ...} = Preference_Profiles_Cmd.get_info @{term R2} ctxt
+    val {raw = raw3, ...} = Preference_Profiles_Cmd.get_info @{term R3} ctxt
+    val {raw = raw4, ...} = Preference_Profiles_Cmd.get_info @{term R4} ctxt
     val b = Preference_Profiles.equiv_profile_anonymity (raw1, raw2)
     val w = Preference_Profiles.find_an_isomorphisms (raw1, raw2) |> Seq.list_of
-    val auto = find_an_automorphisms raw1
+    val auto = derive_orbit_equations raw1
+    val cterm = Thm.cterm_of ctxt
   in
-    auto |> cycles op aconv |> map (map (Thm.cterm_of @{context}))
+(*    auto |> map (apfst (apply2 cterm) o apsnd (map (apply2 cterm))) *)
+    find_manipulations (raw1, raw3)
+    |> map (fn (a,b,c) => (cterm a, map (map cterm) b, map (apply2 cterm) c))
   end
   
 \<close>

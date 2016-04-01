@@ -1,0 +1,340 @@
+signature PREFERENCE_PROFILES =
+sig
+
+type prefs
+type profile
+type support
+type lottery
+type 'a permutation
+
+
+val apply_permutation : ('a * 'a -> bool) -> 'a permutation -> 'a -> 'a
+val is_identity : ('a * 'a -> bool) -> 'a permutation -> bool
+val fixpoints : ('a * 'a -> bool) -> 'a permutation -> 'a list
+val permutations : ('a * 'a -> bool) -> 'a list -> 'a permutation Seq.seq
+val cycles : ('a * 'a -> bool) -> 'a permutation -> 'a list list
+
+(* Equality of weak rankings *)
+val eq_prefs : (prefs * prefs) -> bool
+
+(* Equivalence of preference profiles up to permutation of agents *)
+val equiv_profile_anonymity : (profile * profile) -> bool
+
+val agents_of_profile : profile -> term list
+val alts_of_profile : profile -> term list
+
+val permute_profile : term permutation -> profile -> profile
+
+(* Lazy list of all permutations that, when applied to the first profile, yield one 
+   anonymity-equivalent to the second profile *)
+val find_an_isomorphisms : profile * profile -> term permutation Seq.seq
+
+(* Return the first such isomorphism (or NONE) *)
+val find_an_isomorphism : profile * profile -> term permutation option
+
+(* Find all non-trivial automorphisms of a preference profile *)
+val find_an_automorphisms : profile -> ((term * term) * term permutation) list
+
+(* Compute a list of normalising equations implied by the automorphisms of a 
+   preference profile *)
+val derive_orbit_equations : profile -> ((term * term) * term permutation) list
+
+(* The list of alternatives that are weakly preferred to the given alternative *)
+val preferred_alts : prefs -> term -> term list
+
+(* The list of Pareto-domination pairs (first element dominates second) *)
+val pareto_pairs : profile -> (term * term) list
+
+(* The set of all Pareto losers in a profile *)
+val pareto_losers : profile -> term list
+
+(* Construct the linear program that encodes SD inefficiency of the given support *)
+val mk_inefficiency_lp : profile -> support -> (string list * string * int) list
+
+(* Find a lottery that is strictly SD-preferred to the given support *)
+val find_inefficiency_witness : profile -> support -> lottery option
+
+(* Finds all non-singleton inefficient supports with a inefficiency certificate for each one.
+   (non-singleton because singleton inefficient supports are simply Pareto losers *)
+val find_minimal_inefficient_supports : profile -> (support * lottery) list
+
+val find_manipulations : profile * profile -> (term * prefs * term permutation) list
+
+end
+
+structure Preference_Profiles : PREFERENCE_PROFILES =
+struct
+
+type prefs = term list list
+type profile = (term * prefs) list
+type 'a permutation = ('a * 'a) list
+type support = term list
+type lottery = (term * MyRat.rat) list
+
+val eq_prefs = eq_list (eq_set (op aconv))
+
+fun equiv_profile_anonymity xy = 
+  let
+    val xy = apply2 (map snd) xy
+  in
+    submultiset eq_prefs xy andalso submultiset eq_prefs (swap xy)
+  end
+  
+val agents_of_profile = map fst
+val alts_of_profile = List.concat o snd o hd
+
+
+fun fixpoints eq xs = xs |> filter eq |> map fst
+
+fun apply_permutation _ [] x = x
+  | apply_permutation eq ((x,y)::p) x' = if eq (x,x') then y else apply_permutation eq p x'
+
+val is_identity = forall
+
+fun cycles eq =
+  let
+    fun go3 _ _ [] = raise Match
+      | go3 acc a ((b,c) :: xs) =
+         if eq (a,b) then (c, acc @ xs) else go3 ((b,c) :: acc) a xs
+    fun go2 cyc a b xs =
+      if eq (a,b) then 
+        (cyc, xs) 
+      else case go3 [] b xs of
+        (c, xs) => go2 (b::cyc) a c xs
+    fun go1 acc [] = acc
+      | go1 acc ((a,b) :: xs) = 
+          case go2 [a] a b xs of (cyc, xs') => go1 (rev cyc :: acc) xs'
+  in
+    rev o go1 []
+  end    
+
+fun permutations eq xs = 
+  let
+    fun go acc [] = Seq.single acc
+      | go acc xs = Seq.maps (fn x => go (x::acc) (remove1 eq x xs)) (Seq.of_list xs)
+  in
+    Seq.map (fn ys => xs ~~ ys) (go [] xs)
+  end
+
+fun permute_profile p = map (fn (x, yss) => (x, map (map (apply_permutation op aconv p)) yss))
+
+fun find_an_isomorphisms (xs, ys) =
+  let
+    fun is_iso p = equiv_profile_anonymity (permute_profile p xs, ys)
+  in
+    permutations (op aconv) (alts_of_profile xs)
+    |> Seq.filter (is_iso)
+  end
+
+val find_an_isomorphism =
+  find_an_isomorphisms #> Seq.pull #> Option.map fst
+
+fun seq_fold f s acc =
+  case Seq.pull s of
+    NONE => acc
+  | SOME (x,s) => seq_fold f s (f x acc)
+
+fun find_an_automorphisms xs =
+  let
+    fun eq (((a,b),_), ((c,d),_)) = a aconv c andalso b aconv d
+  in
+    (xs, xs) 
+    |> find_an_isomorphisms
+    |> Seq.map (filter_out (op aconv))
+    |> Seq.filter (not o null)
+    |> Seq.maps (fn xs => Seq.of_list (map (fn x => (x, xs)) xs))
+    |> (fn s => seq_fold (fn x => fn y => insert eq x y) s [])
+  end
+
+
+fun preferred_alts r x =
+  let
+    fun go acc [] = acc
+      | go acc (xs::xss) =
+          if member op aconv xs x then (xs @ acc) else go (xs @ acc) xss
+  in
+    go [] r
+  end
+
+fun pareto_pairs p =
+  let
+    val alts = alts_of_profile p
+    fun dom_set x =
+      let
+        fun go [] = []
+          | go (xs::xss) = 
+              if member op aconv xs x then List.concat (xs::xss) else go xss
+      in
+        fold (fn (_, xss) => inter op aconv (go xss)) p alts
+      end
+    fun filter_out_symmetric xs =
+      filter_out (fn (x,y) => member (eq_pair op aconv op aconv) xs (y, x)) xs
+    val filter_out_trans =
+      let
+        fun go acc [] = acc
+          | go acc (x::xs) =
+              if member (op aconv o apply2 snd) acc x then 
+                go acc xs 
+              else 
+                go (x::acc) xs
+      in
+        go []
+      end
+  in
+    alts
+    |> map (fn x => map (fn y => (x, y)) (dom_set x))
+    |> List.concat
+    |> filter_out_symmetric
+    |> filter_out_trans
+  end
+
+val pareto_losers = pareto_pairs #> map snd #> distinct op aconv
+
+(* Poor man's Union-Find *)
+fun eqclasses eq carrier eqs = 
+  let
+    fun merge (a, b) m =
+      let
+        val ra = the (AList.lookup eq m a)
+        val rb = the (AList.lookup eq m b)
+      in
+        map (apsnd (fn r => if eq (r, ra) then rb else r)) m
+      end
+  in
+    fold merge eqs (carrier ~~ carrier)
+  end
+
+fun derive_orbit_equations p =
+  let
+    val alts = alts_of_profile p
+    val automorphisms = find_an_automorphisms p
+    val reprs = eqclasses op aconv alts (map fst automorphisms)
+    val repr = AList.lookup op aconv reprs #> the
+    val automorphisms = filter_out (fn ((a,b), _) => b aconv repr a) automorphisms
+  in
+    automorphisms
+  end
+
+
+fun mk_inefficiency_lp p support =
+  let
+    val alts = alts_of_profile p
+    val alt_ids = alts ~~ List.tabulate (length alts, Int.toString);
+    val in_support = member op aconv support
+    fun mk_lottery_var x = "q" ^ the (AList.lookup op aconv alt_ids x)
+    fun mk_slack_var i j = "r" ^ Int.toString i ^ "_" ^ Int.toString j
+
+    fun mk_ineqs_for_agent acc _ [] _ _ = acc
+      | mk_ineqs_for_agent acc _ [_] _ _ = acc
+      | mk_ineqs_for_agent acc (lhs, rhs) (xs::xss) j i =
+          let
+            val lhs' = map mk_lottery_var xs @ lhs
+            val rhs' = length (filter in_support xs) + rhs
+          in
+            mk_ineqs_for_agent ((lhs',mk_slack_var i j,rhs')::acc) (lhs',rhs') xss (j+1) i
+          end
+  in
+    fold (fn (_, r) => fn (i,acc) => (i+1, mk_ineqs_for_agent acc ([],0) r 0 i)) p (0, []) |> snd
+  end
+
+local
+open Rat_Linear_Program
+in
+
+fun lp_constr_to_qsopt_constr n (lhs, slack, rhs) =
+  let
+    val n = MyRat.from_int n
+    val lhs' = (MyRat.from_int (~1), slack) :: map (fn x => (n, x)) lhs
+  in
+    (lhs', EQ, MyRat.from_int rhs)
+  end
+
+fun mk_inefficiency_lp_qsopt p support =
+  let
+    val constrs = mk_inefficiency_lp p support
+    val alts = alts_of_profile p
+    val n = length support
+    val one = MyRat.from_int 1
+    val sum = map (fn x => (one, x))
+    val alt_ids = alts ~~ List.tabulate (length alts, Int.toString);
+    fun mk_lottery_var x = "q" ^ the (AList.lookup op aconv alt_ids x)
+    val lottery_vars = map mk_lottery_var alts
+    val slack_vars = map #2 constrs
+ 
+    val constrs' = map (lp_constr_to_qsopt_constr n) constrs
+    val eq = (sum lottery_vars, EQ, one)
+  in
+    (MAXIMIZE, sum slack_vars, eq :: constrs', [])
+  end
+
+
+fun find_inefficiency_witness p lottery =
+  let
+    val alts = alts_of_profile p
+    val lottery_vars = List.tabulate (length alts, fn x => "q" ^ Int.toString x);
+    fun the_default x NONE = x
+      | the_default _ (SOME y) = y
+
+    fun process_solution (diff, assignments) = 
+      if diff = MyRat.from_int 0 then 
+        NONE 
+      else 
+        SOME (alts ~~ map (the_default (MyRat.from_int 0) o AList.lookup op= assignments) 
+          lottery_vars)
+  in 
+    case solve_program (mk_inefficiency_lp_qsopt p lottery) of
+      Optimal x => process_solution x
+    | _ => raise Match
+  end
+
+fun power_set xs =
+  let
+    fun go acc [] = [acc]
+      | go acc (x::xs) = go acc xs @ go (x::acc) xs
+  in
+    go [] xs |> sort (int_ord o apply2 length)
+  end
+
+
+fun find_minimal_inefficient_supports p =
+  let
+    val alts = subtract op aconv (pareto_losers p) (alts_of_profile p)
+    fun go supp acc =
+      if List.null supp orelse
+            member (fn (a, b) => subset op aconv (fst b, a)) acc supp then
+        acc
+      else 
+        case find_inefficiency_witness p supp of
+          NONE => acc
+        | SOME lott => (supp, lott) :: acc
+  in
+    fold go (power_set alts) []
+  end
+
+fun manipulations xs y =
+  let
+    fun go acc _ [] = acc
+      | go acc xs1 (x::xs2) = 
+          go ((fst x, y, rev xs1 @ (fst x,y) :: xs2) :: acc) (x::xs1) xs2
+  in
+    rev (go [] [] xs)
+  end
+
+val bind = Seq.maps
+fun bind' f x = bind f (Seq.of_list x)
+
+fun find_manipulations (p1, p2) =
+  let
+    val alts = alts_of_profile p1
+  in
+    permutations op aconv alts |> bind (fn p =>
+      p2 |> bind' (fn (_, prefs) =>
+        Seq.of_list (manipulations (permute_profile p p1) prefs)
+        |> Seq.filter (fn (_, _, p1') => equiv_profile_anonymity (p1', p2))
+        |> Seq.map (fn (a, b, _) => (a, b, p))))
+    |> Seq.list_of
+  end
+
+end
+
+end

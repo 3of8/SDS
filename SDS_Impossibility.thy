@@ -14,6 +14,7 @@ imports
   Social_Decision_Schemes
   Preference_Profile_Cmd
   Random_Dictatorship
+  Random_Serial_Dictatorship
 begin
 
 
@@ -51,7 +52,7 @@ lemma distinct_alts' [simp]:
 
 subsubsection \<open>Definition of preference profiles\<close>
 
-preference_profile 
+preference_profile
   agents: agents 
   alts:   alts 
   where R1  = A1: [a,c], [b,d]     A2: [b,d], [a,c]     A3: [a,d], b, c     A4: [b,c], a, d
@@ -69,12 +70,6 @@ preference_profile
     and R13 = A1: c, [a, b], d     A2: b, [a, c], d     A3: a, d, [b, c]    A4: b, c, a, d
   by (simp_all add: agents alts)
 
-ML_val \<open>
-  let
-    val {raw, ...} = Preference_Profiles.get_info @{term "R1"} @{context}
-    in raw
-    end
-  \<close>
   
 lemma "a \<succ>[R1 A1] b"
   by (simp add: R1_eval)

@@ -315,13 +315,13 @@ end
 structure Rat_Linear_Program = Linear_Program(
 struct
 
-type T = Rat.rat
+type T = MyRat.rat
 
-val print = Rat.to_string
-val read = Rat.from_string
-val compare = Rat.compare
-val from_int = Rat.from_int
-val negate = Rat.~
+val print = MyRat.to_string
+val read = MyRat.from_string
+val compare = MyRat.compare
+val from_int = MyRat.from_int
+val negate = MyRat.~
 
 end)
 

@@ -9,11 +9,19 @@ begin
 
 preference_profile agents: "{A1,A2,A3,A4}" alts: "{a,b,c,d}" where
   R = A1: [a,b], [c,d] A2: [b,d], a, c A3: [a,c], [b,d] A4: [c,d], a, b
-  by (simp_all add: insert_eq_iff)
+  by simp_all
 
 preference_profile agents: "{A1,A2,A3,A4}" alts: "{a,b,c,d}" where
   R3 = A1: b,a,d,c A2: b,a,c,d A3: a,b,c,d A4: a,b,c,d
-  by (simp_all add: insert_eq_iff)
+  by simp_all
+
+preference_profile
+  agents: "{A1,A2,A3,A4}"
+  alts:   "{a,b,c,d}"
+  where R1  = A1: [a,c], [b,d]     A2: [b,d], [a,c]     A3: [a,d], b, c     A4: [b,c], a, d
+  by simp_all
+
+
 
 ML_val \<open>
 open Preference_Profiles;
@@ -111,7 +119,7 @@ end
 
 
 
-val p = let val {raw = raw, ...} = get_info @{term R} @{context} in raw end
+val p = let val {raw = raw, ...} = get_info @{term R1} @{context} in raw end
 
 val cterm = Thm.cterm_of @{context}
 
