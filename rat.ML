@@ -8,19 +8,19 @@ sig
   val to_real : rat -> real
   val from_string : string -> rat option
   val to_string : rat -> string
-  val to_string' : rat -> string
-
-  val + : rat * rat -> rat
-  val ~ : rat -> rat
-  val - : rat * rat -> rat
-  val * : rat * rat -> rat
-  val / : rat * rat -> rat
-  val < : rat * rat -> bool
-  val <= : rat * rat -> bool
-  val > : rat * rat -> bool
-  val >= : rat * rat -> bool
+  val pretty : rat -> string
 
   val compare : rat * rat -> General.order
+  val rneg : rat -> rat
+  val radd : (rat * rat) -> rat
+  val rsub : (rat * rat) -> rat
+  val rmult : (rat * rat) -> rat
+  val inv : rat -> rat
+  val rdiv : (rat * rat) -> rat
+  val rleq : (rat * rat) -> bool
+  val rless : (rat * rat) -> bool
+  val rgt : (rat * rat) -> bool
+  val rgeq : (rat * rat) -> bool
 
   val mult_int : rat -> int -> rat
   val div_int : rat -> int -> rat
@@ -39,18 +39,10 @@ struct
 
 datatype rat = Rat of int * int;
 
-(* Rational numbers *)
-
-fun gcd a b = 
-  let fun gcd' a 0 = a 
-        | gcd' a b = gcd b (a mod b)
-  in  gcd' (abs a) (abs b)
-  end;
-
 fun of_quotient (_, 0) = raise Div
   | of_quotient (a, b) = 
-  let val g = gcd a b 
-      val (a', b') = if b<0 then (~a,~b) else (a,b)
+  let val g = PolyML.IntInf.gcd (a, b)
+      val (a', b') = if b < 0 then (~a,~b) else (a,b)
   in  Rat (a' div g, b' div g)
   end;
 
@@ -58,13 +50,13 @@ fun to_quotient (Rat x) = x
 
 fun from_int a = Rat (a, 1)
 
-fun int_to_string a = if a < 0 then "-" ^ Int.toString (~a) else Int.toString a
+fun to_string (Rat (a, 1)) = Int.toString a
+  | to_string (Rat (a, b)) = 
+      (if a < 0 then "~ " else "") ^ Int.toString (abs a) ^ " / " ^ Int.toString b
 
-fun to_string (Rat (a, 1)) = int_to_string a
-  | to_string (Rat (a, b)) = Int.toString a ^ " / " ^ Int.toString b
-
-fun to_string' (Rat (a, 1)) = int_to_string a
-  | to_string' (Rat (a, b)) = int_to_string a ^ " / " ^ Int.toString b
+fun pretty (Rat (a, 1)) = (if a < 0 then "-" else "") ^ Int.toString a
+  | pretty (Rat (a, b)) = 
+      (if a < 0 then "- " else "") ^ Int.toString (abs a) ^ " / " ^ Int.toString b
 
 
 fun from_string s =
@@ -85,8 +77,13 @@ fun abs (Rat (a,b)) = Rat (Int.abs a, b)
 
 fun radd (Rat (a1,b1), Rat (a2,b2)) = of_quotient (a1*b2+a2*b1,b1*b2);
 fun rneg (Rat (a1, b1)) = Rat (~a1, b1)
-fun rmul (Rat (a1,b1), Rat (a2,b2)) = of_quotient (a1*a2, b1*b2);
+fun rmult (Rat (a1,b1), Rat (a2,b2)) = of_quotient (a1*a2, b1*b2);
 fun rdiv (Rat (a1,b1), Rat (a2,b2)) = of_quotient (a1*b2,b1*a2);
+fun inv (Rat (a, b)) = 
+  case int_ord (a, 0) of
+    LESS => Rat (~b, ~a)
+  | GREATER => Rat (b, a)
+  | EQUAL => raise Div
 fun rsub (Rat (a1,b1), Rat (a2,b2)) = of_quotient (a1*b2-a2*b1,b1*b2);
 fun rless (Rat (a1,b1), Rat (a2,b2)) = a1*b2 < a2*b1;
 fun rleq (Rat (a1,b1), Rat (a2,b2)) = a1*b2 <= a2*b1;
@@ -97,21 +94,11 @@ fun div_int (Rat (a1,b1)) c = of_quotient (a1,b1*c);
 fun mult_int (Rat (a1,b1)) c = of_quotient (a1*c,b1);
 
 fun floor (Rat (x, y)) = x div y
-fun ceil (Rat (x, y)) = if x mod y = 0 then x div y else x div y + 1
+fun ceil (Rat (x, y)) = 
+  case Integer.div_mod x y of
+    (q, r) => if r = 0 then q else q + 1
 
-val op + = radd
-val ~ = rneg
-val op - = rsub
-val op * = rmul
-val op / = rdiv
-val op < = rless
-val op <= = rleq
-val op > = rgt
-val op >= = rgeq
-
-fun compare (i, j) =
-    if i < j then General.LESS
-    else if i > j then General.GREATER else General.EQUAL
+fun compare (Rat (a,b), Rat (c,d)) = Int.compare (a * d, b * c)
 
 (* Destructors for rational numbers / polynomials *)
 
@@ -135,13 +122,13 @@ end
 
 val _ = PolyML.addPrettyPrinter (K (K (PolyML.PrettyString o MyRat.to_string)));
 
-val () = RunCall.addOverload MyRat.~ "~";
-val () = RunCall.addOverload MyRat.+ "+";
-val () = RunCall.addOverload MyRat.- "-";
-val () = RunCall.addOverload MyRat.* "*";
-val () = RunCall.addOverload MyRat./ "/";
-val () = RunCall.addOverload MyRat.< "<";
-val () = RunCall.addOverload MyRat.> ">";
-val () = RunCall.addOverload MyRat.<= "<=";
-val () = RunCall.addOverload MyRat.>= ">=";
+val () = RunCall.addOverload MyRat.rneg "~";
+val () = RunCall.addOverload MyRat.radd "+";
+val () = RunCall.addOverload MyRat.rsub "-";
+val () = RunCall.addOverload MyRat.rmult "*";
+val () = RunCall.addOverload MyRat.rdiv "/";
+val () = RunCall.addOverload MyRat.rless "<";
+val () = RunCall.addOverload MyRat.rgt ">";
+val () = RunCall.addOverload MyRat.rleq "<=";
+val () = RunCall.addOverload MyRat.rgeq ">=";
 val () = RunCall.addOverload MyRat.abs "abs";

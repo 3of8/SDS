@@ -12,9 +12,9 @@ theory SDS_Impossibility
 imports
   Complex_Main
   Social_Decision_Schemes
+  SDS_Lowering
   Preference_Profile_Cmd
   Random_Dictatorship
-  Random_Serial_Dictatorship
 begin
 
 
@@ -708,10 +708,6 @@ qed
 context sds_impossibility
 begin
 
-(* 
-  TODO: This proof could be generalised to show that any SDS with these properties
-  can be lowered to one on a smaller set of agents/alternatives.
-*)
 lemma no_such_sds: False
 proof -
   from card_ge_4E[OF finite_agents agents_ge_4] guess A1 A2 A3 A4 .
@@ -719,204 +715,12 @@ proof -
   from card_ge_4E[OF finite_alts alts_ge_4] guess a b c d .
   note alts = this
   def agents' \<equiv> "{A1,A2,A3,A4}" and alts' \<equiv> "{a,b,c,d}"
-  have agents'_subset: "agents' \<subseteq> agents" and alts'_subset: "alts' \<subseteq> alts"
-    unfolding agents'_def alts'_def using alts agents by auto
-
-  def lift \<equiv> "\<lambda>R i x y. x \<in> alts \<and> y \<in> alts \<and> i \<in> agents \<and>
-                 (x = y \<or> x \<notin> alts' \<or> i \<notin> agents' \<or> (y \<in> alts' \<and> R i x y))"
-  def sds' \<equiv> "sds \<circ> lift"
-
-  have lift_wf [simp, intro]: "is_pref_profile (lift R)" 
-     if "pref_profile_wf agents' alts' R" for R
-  proof
-    fix i assume i: "i \<in> agents"
-    from that interpret pref_profile_wf agents' alts' R .
-    show "complete_preorder_on alts (lift R i)"
-    proof (cases "i \<in> agents'")
-      assume "i \<notin> agents'"
-      with i show ?thesis by unfold_locales (simp_all add: lift_def)
-    next
-      assume "i \<in> agents'"
-      then interpret R: complete_preorder_on alts' "R i" by simp
-      from i show "complete_preorder_on alts (lift R i)"
-        by unfold_locales (insert R.complete, auto simp: R.refl lift_def intro: R.trans) 
-    qed
-  next
-    fix i assume "i \<notin> agents"
-    with agents'_subset show "lift R i = (\<lambda>_ _. False)"
-      by (intro ext) (simp add: lift_def)
-  qed
-
-  interpret SDS': agenda agents' alts'
-    using agents alts by unfold_locales (simp_all add: agents'_def alts'_def)
-
-  have lift_lottery [simp]: "p \<in> lotteries" if "p \<in> SDS'.lotteries" for p
-    using that alts'_subset by (auto simp: lotteries_on_def)
-
-  interpret SDS': social_decision_scheme agents' alts' sds'
-  proof
-    fix R assume R_wf: "SDS'.is_pref_profile R"
-    then interpret R: pref_profile_wf agents' alts' R .
-    from R_wf interpret R': pref_profile_wf agents alts "lift R" by simp
-    have "pmf (sds' R) x = 0" if x: "x \<in> alts - alts'" for x
-      unfolding sds'_def o_def
-    proof (rule ex_post_efficient'[OF _ R'.Pareto_strictI'])
-      fix i assume "i \<in> agents"
-      with alts x show "a \<succeq>[lift R i] x"
-        by (auto simp: lift_def alts'_def)
-    next
-      from alts x show "\<not>x \<succeq>[lift R A1] a" by (auto simp: lift_def agents'_def alts'_def)
-    qed (insert R_wf x alts agents, simp_all)
-    moreover have "sds' R \<in> lotteries" unfolding sds'_def o_def
-      by (intro sds_wf lift_wf R_wf)
-    ultimately show "sds' R \<in> SDS'.lotteries"
-      by (auto simp: lotteries_on_def set_pmf_eq)
-  qed
-
-  interpret anonymous_sds agents' alts' sds'
-  proof
-    fix \<pi> R assume perm: "\<pi> permutes agents'" and R_wf: "SDS'.is_pref_profile R"
-    from perm agents'_subset have perm': "\<pi> permutes agents" by (rule permutes_subset)
-    from perm perm' have "lift (R \<circ> \<pi>) = lift R \<circ> \<pi>"
-      using agents'_subset by (intro ext) (auto simp: lift_def permutes_in_image)
-    hence "sds (lift (R \<circ> \<pi>)) = sds (lift R \<circ> \<pi>)" by simp
-    also from perm R_wf have "\<pi> permutes agents" "is_pref_profile (lift R)"
-      using agents'_subset by (auto dest: permutes_subset)
-    from anonymous[OF this] have "sds (lift R \<circ> \<pi>) = sds (lift R)"
-      by (simp add: sds'_def)
-    finally show "sds' (R \<circ> \<pi>) = sds' R" unfolding sds'_def o_def .
-  qed
-
-  interpret neutral_sds agents' alts' sds'
-  proof
-    fix \<sigma> R assume perm: "\<sigma> permutes alts'" and R_wf: "SDS'.is_pref_profile R"
-    from perm have perm': "\<sigma> permutes alts"
-      using alts'_subset by (blast dest: permutes_subset)
-    have inj: "inj (inv \<sigma>)" using permutes_inj permutes_inv perm' by blast
-
-    have "lift (permute_profile \<sigma> R) = permute_profile \<sigma> (lift R)"
-      using alts'_subset permutes_inv[OF perm] permutes_inv[OF perm'] inj
-      by (intro ext) (auto simp: lift_def permutes_in_image permute_profile_def dest: injD)
-    hence "sds (lift (permute_profile \<sigma> R)) = sds (permute_profile \<sigma> (lift R))" by simp
-    also from R_wf have "is_pref_profile (lift R)" by simp
-    from neutral[OF perm' this] 
-      have "sds (permute_profile \<sigma> (lift R)) = map_pmf \<sigma> (sds (lift R))" .
-    finally show "sds' (permute_profile \<sigma> R) = map_pmf \<sigma> (sds' R)"
-      by (simp add: sds'_def o_def)
-  qed
-
-  have lift_preferred_alts: "preferred_alts (lift R i) x = 
-       (if i \<in> agents' \<and> x \<in> alts' then preferred_alts (R i) x else alts)"
-    if "i \<in> agents" "x \<in> alts" "SDS'.is_pref_profile R" for R i x
-  proof (cases "i \<in> agents'")
-    from that interpret pref_profile_wf agents' alts' R by simp
-    assume i: "i \<in> agents'"
-    then interpret Ri: complete_preorder_on alts' "R i"
-      using that by simp
-    show ?thesis
-    using i that alts'_subset Ri.not_outside
-      by (auto simp: preferred_alts_def lift_def Ri.refl)
-  qed (auto simp: preferred_alts_def lift_def that)
-
-  interpret SDS': sd_efficient_sds agents' alts' sds'
-  proof
-    fix R assume R_wf: "SDS'.is_pref_profile R"
-    interpret R: pref_profile_wf agents' alts' R by fact
-    show "SD_efficient R (sds' R)"
-    proof (unfold R.SD_efficient_def, safe)
-      fix q i 
-      assume q: "q \<in> SDS'.lotteries"
-      assume i: "i \<in> agents'"
-      assume weak: "\<forall>i\<in>agents'. q \<succeq>[SD(R i)] sds' R"
-      assume strong: "q \<succ>[SD(R i)] sds' R"
-      from R_wf interpret R': pref_profile_wf agents alts "lift R" by simp
-  
-      have pmf_zero: "pmf (sds' R) x = 0" if x: "x \<notin> alts'" for x
-        using x SDS'.sds_wf[OF R_wf]
-        by (auto simp: lotteries_on_def set_pmf_eq lift_def)
-  
-      from SD_efficient have "SD_efficient (lift R) (sds' R)" unfolding sds'_def o_def
-        using R_wf by simp
-      moreover have "q \<in> lotteries" using q by simp
-      moreover have "q \<succeq>[SD(lift R i)] sds' R" if i: "i \<in> agents" for i
-      proof (cases "i \<in> agents'")
-        assume i: "i \<in> agents'"
-        with agents'_subset have [simp]: "i \<in> agents" by blast
-        show ?thesis
-        proof (rule R'.SD_pref_profileI) 
-          fix x assume x: "x \<in> alts"
-          show "SDS'.lottery_prob (sds' R) (preferred_alts (lift R i) x)
-                  \<le> SDS'.lottery_prob q (preferred_alts (lift R i) x)"
-          using i bspec[OF weak i] agents'_subset R_wf x
-          by (fastforce simp: lift_preferred_alts lottery_prob_alts R.SD_pref_profile)
-        qed (auto simp: SDS'.sds_wf R_wf q)
-      next
-        assume i': "i \<notin> agents'"
-        from i have "complete_preorder_on alts (lift R i)" by simp
-        with i' agents'_subset i q R_wf show ?thesis
-          by (intro R'.SD_pref_profileI)
-             (auto intro!: SDS'.sds_wf lift_lottery 
-                   simp: lift_def preferred_alts_def lottery_prob_alts)
-      qed
-      moreover have "\<exists>i\<in>agents. \<not>(q \<preceq>[SD(lift R i)] sds' R)"
-      proof
-        from i agents'_subset show i': "i \<in> agents" by blast
-        from i interpret R: complete_preorder_on alts' "R i"
-          using R_wf by (simp add: i)
-        from strong have "\<not>(q \<preceq>[SD(R i)] sds' R)" 
-          by (simp add: strongly_preferred_def)
-        then obtain x where x: "x \<in> alts'" and
-           "SDS'.lottery_prob (sds' R) (preferred_alts (R i) x)
-             < SDS'.lottery_prob q (preferred_alts (R i) x)"
-          using q i R_wf by (force simp: R.SD_pref_profile SDS'.sds_wf)
-        moreover from x alts'_subset have "x \<in> alts" by blast
-        ultimately show "\<not>(q \<preceq>[SD(lift R i)] sds' R)"
-          using q i i' R_wf 
-          by (auto intro!: bexI[of _ x] SDS'.sds_wf 
-                   simp: lift_preferred_alts not_le R'.SD_pref_profile)
-      qed
-      ultimately show False by (rule R'.SD_efficientD)
-    qed
-  qed
-
-  interpret strategyproof_sds agents' alts' sds'
-  proof (unfold_locales, safe)
-    fix R i Ri'
-    assume R_wf: "SDS'.is_pref_profile R" and i: "i \<in> agents'"
-    assume Ri': "complete_preorder_on alts' Ri'"
-    assume manipulable: "SDS'.manipulable_profile R i Ri'"
-    from i agents'_subset have i': "i \<in> agents" by blast
-    interpret R: pref_profile_wf agents' alts' R by fact
-    from R_wf interpret liftR: pref_profile_wf agents alts "lift R" by simp
-   
-    def lift_Ri' \<equiv> "\<lambda>x y. x \<in> alts \<and> y \<in> alts \<and> (x = y \<or> x \<notin> alts' \<or> (y \<in> alts' \<and> Ri' x y))"
-    def S \<equiv> "(lift R)(i := lift_Ri')"
-    from Ri' interpret Ri': complete_preorder_on alts' Ri' .
-    have [simp]: "complete_preorder_on alts lift_Ri'" using Ri'.complete
-      by unfold_locales (auto simp: lift_Ri'_def intro: Ri'.trans)
-    from lift_wf[OF R_wf] Ri' i agents'_subset have [simp]: "sds S \<in> lotteries" 
-      by (auto intro!: sds_wf simp: S_def pref_profile_wf_def)
-
-    have "manipulable_profile (lift R) i lift_Ri'"
-    proof -
-      from manipulable have "sds (lift R) \<prec>[SD (R i)] sds (lift (R(i := Ri')))" 
-        unfolding SDS'.manipulable_profile_def unfolding sds'_def o_def .
-      also from i agents'_subset have "lift (R(i := Ri')) = S"
-        by (intro ext) (auto simp: lift_def lift_Ri'_def S_def)
-      finally show ?thesis using i i' alts'_subset R_wf
-        unfolding manipulable_profile_def S_def [symmetric] strongly_preferred_def
-        by (auto simp: R.SD_pref_profile liftR.SD_pref_profile 
-              lottery_prob_alts lift_preferred_alts strongly_preferred_def)
-    qed
-    moreover from R_wf i agents'_subset
-      have "\<not>manipulable_profile (lift R) i lift_Ri'"
-      by (intro strategyproof) auto
-    ultimately show False by contradiction
-  qed
-
-  interpret sds_impossibility_4_4 agents' alts' sds' A1 A2 A3 A4 a b c d
-    by unfold_locales (insert agents alts, simp_all add: agents'_def alts'_def)
-
+  from agents alts 
+    interpret sds_lowering_anonymous_neutral_sdeff_stratproof agents alts sds agents' alts'
+    unfolding agents'_def alts'_def by unfold_locales simp_all
+  from agents alts 
+    interpret sds_impossibility_4_4 agents' alts' lowered A1 A2 A3 A4 a b c d
+    by unfold_locales (simp_all add: agents'_def alts'_def)
   from no_such_sds show False .
 qed
 

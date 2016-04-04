@@ -663,8 +663,7 @@ proof (induction A rule: weak_ranking_aux.induct [case_names empty nonempty])
     moreover from nonempty.prems 
       have "\<Union>set (weak_ranking_aux (A - Max_wrt_among le A)) = A - Max_wrt_among le A"
       by (intro weak_ranking_aux_Union) auto
-    ultimately show "Max_wrt_among le A \<notin> set (weak_ranking_aux (A - Max_wrt_among le A))"
-                    "Max_wrt_among le A \<inter> \<Union>set (weak_ranking_aux (A - Max_wrt_among le A)) = {}"
+    ultimately show "Max_wrt_among le A \<inter> \<Union>set (weak_ranking_aux (A - Max_wrt_among le A)) = {}"
       by blast+
   qed
   with nonempty.prems nonempty.hyps show ?case by simp

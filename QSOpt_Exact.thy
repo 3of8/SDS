@@ -321,7 +321,7 @@ val print = MyRat.to_string
 val read = MyRat.from_string
 val compare = MyRat.compare
 val from_int = MyRat.from_int
-val negate = MyRat.~
+val negate = MyRat.rneg
 
 end)
 
