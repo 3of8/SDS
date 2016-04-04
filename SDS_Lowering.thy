@@ -1,3 +1,16 @@
+(*  
+  Title:    SDS_Lowering.thy
+  Author:   Manuel Eberl, TU München
+
+  Allows to lower an SDS, i.e. take an existing ex-post efficient SDS
+  and construct from it an SDS for fewer agents and alternatives. (which is
+  also ex-post efficient)
+    The standard properties (anonymity, neutrality, SD efficiency, strategyproofness)
+  are preserved by this construction.
+*)
+
+section \<open>Lowering Social Decision Schemes\<close>
+
 theory SDS_Lowering
 imports Social_Decision_Schemes
 begin
