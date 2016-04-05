@@ -126,7 +126,7 @@ lemma eval_prefs_from_table_aux:
   assumes "R \<equiv> prefs_from_table xs" "prefs_from_table_wf agents alts xs"
   shows   "R i a b \<longleftrightarrow> prefs_from_table xs i a b"
           "a \<prec>[R i] b \<longleftrightarrow> prefs_from_table xs i a b \<and> \<not>prefs_from_table xs i b a"
-          "anonymous_profile agents R = mset (map snd xs)"
+          "anonymous_profile R = mset (map snd xs)"
           "agenda agents alts \<Longrightarrow> i \<in> set (map fst xs) \<Longrightarrow> 
              preferred_alts (R i) x = 
              of_weak_ranking_Collect_ge (rev (the (map_of xs i))) x"
@@ -150,20 +150,31 @@ lemma pref_profile_from_tableI':
 subsection \<open>Automorphisms\<close>
 
 lemma an_sds_automorphism_aux:
-  assumes wf: "pref_profile_wf agents alts R"
+  assumes wf: "prefs_from_table_wf agents alts yss" "R \<equiv> prefs_from_table yss"
   assumes an: "an_sds agents alts sds"
-  assumes eq: "image_mset (map (op ` \<sigma>)) (anonymous_profile agents R) = anonymous_profile agents R"
-  assumes perm: "\<sigma> permutes alts"
-  assumes x:  "x \<in> alts"
-  shows   "pmf (sds R) (\<sigma> x) = pmf (sds R) x"
+  assumes eq: "mset (map ((map (op ` (permutation_of_list xs))) \<circ> snd) yss) = mset (map snd yss)"
+  assumes perm: "set (map fst xs) \<subseteq> alts" "set (map snd xs) = set (map fst xs)" 
+                "distinct (map fst xs)" 
+      and x: "x \<in> alts" "y = permutation_of_list xs x"
+  shows   "pmf (sds R) x = pmf (sds R) y"
 proof -
-  from wf interpret pref_profile_wf agents alts R .
+  note perm = list_permutesI[OF perm]
+  let ?\<sigma> = "permutation_of_list xs"
+  note perm' = permutation_of_list_permutes [OF perm]
+  from wf have wf': "pref_profile_wf agents alts R" by (simp add: pref_profile_from_tableI)
+  then interpret R: pref_profile_wf agents alts R .
+  from perm' interpret R': pref_profile_wf agents alts "permute_profile ?\<sigma> R"
+    by (simp add: R.wf_permute_alts)
   from an interpret an_sds agents alts sds .
-  from perm x have "pmf (sds R) x = pmf (map_pmf \<sigma> (sds R)) (\<sigma> x)"
+
+  from eq wf have eq': "image_mset (map (op ` ?\<sigma>)) (anonymous_profile R) = anonymous_profile R"
+    by (simp add: anonymise_prefs_from_table mset_map multiset.map_comp)
+  from perm' x have "pmf (sds R) x = pmf (map_pmf ?\<sigma> (sds R)) (?\<sigma> x)"
     by (simp add: pmf_map_inj' permutes_inj)
-  also from assms have "map_pmf \<sigma> (sds R) = sds R"
-    by (intro sds_automorphism) (simp_all add: anonymous_profile_permute)
-  finally show ?thesis ..
+  also from eq' x wf' perm' have "map_pmf ?\<sigma> (sds R) = sds R"
+    by (intro sds_automorphism) 
+       (simp_all add: R.anonymous_profile_permute pref_profile_from_tableI)
+  finally show ?thesis using x by simp
 qed
 
 
@@ -175,6 +186,8 @@ sig
 type info
 
 val pref_profileT : typ -> typ -> typ
+val lotteryT : typ -> typ
+val sdsT : typ -> typ -> typ
 
 val preference_profile : 
   (term * term) * ((binding * (term * term list list) list) list) -> Proof.context -> Proof.state
@@ -196,17 +209,18 @@ open Preference_Profiles
 
 
 type info = 
-  { term : term, def_thm : thm, wf_thm : thm, wf_raw_thm : thm, 
+  { term : term, def_thm : thm, wf_thm : thm, wf_raw_thm : thm, binding : binding,
     raw : (term * term list list) list, eval_thms : thm list }
 
-fun transform_info ({term = t, def_thm, wf_thm, wf_raw_thm, raw, eval_thms} : info) phi =
+fun transform_info ({term = t, binding, def_thm, wf_thm, wf_raw_thm, raw, eval_thms} : info) phi =
     let
       val thm = Morphism.thm phi
       val fact = Morphism.fact phi
       val term = Morphism.term phi
+      val bdg = Morphism.binding phi
     in
-      { term = term t, def_thm = thm def_thm, wf_thm = thm wf_thm, wf_raw_thm = thm wf_raw_thm, 
-        raw = map (fn (a, bss) => (term a, map (map term) bss)) raw,
+      { term = term t, binding = bdg binding, def_thm = thm def_thm, wf_thm = thm wf_thm, 
+        wf_raw_thm = thm wf_raw_thm, raw = map (fn (a, bss) => (term a, map (map term) bss)) raw,
         eval_thms = fact eval_thms }
     end
 
@@ -228,6 +242,8 @@ fun add_infos infos lthy =
   Data.map (fold Item_Net.update infos) lthy
  
 fun pref_profileT agentT altT = agentT --> altT --> altT --> HOLogic.boolT
+fun lotteryT altT = Type (@{type_name pmf}, [altT])
+fun sdsT agentT altT = pref_profileT agentT altT --> lotteryT altT
 
 fun preference_profile_aux agents alts (binding, args) lthy = 
   let
@@ -308,16 +324,17 @@ fun preference_profile ((agents, alts), args) lthy =
           @{thm pref_profile_from_tableI'} OF [def, wf]) defs wf_thms_raw
         val mk_infos =
           let 
-            fun aux acc (t::ts) (r::raws) (def::def_thms) (wf::wf_thms) 
+            fun aux acc (bdg::bdgs) (t::ts) (r::raws) (def::def_thms) (wf::wf_thms) 
                    (wf_raw::wf_raw_thms) (evals::eval_thmss) =
-              aux ((t, {term = t, raw = r, def_thm = def, wf_thm = wf, wf_raw_thm = wf_raw, 
-                eval_thms = evals}) :: acc) ts raws def_thms wf_thms wf_raw_thms eval_thmss
-            | aux acc [] _ _ _ _ _ = (acc : (term * info) list)
-            | aux _ _ _ _ _ _ _ = raise Match
+              aux ((t, {binding = bdg, term = t, raw = r, def_thm = def, wf_thm = wf,
+                 wf_raw_thm = wf_raw, eval_thms = evals}) :: acc) 
+                 bdgs ts raws def_thms wf_thms wf_raw_thms eval_thmss
+            | aux acc [] _ _ _ _ _ _ = (acc : (term * info) list)
+            | aux _ _ _ _ _ _ _ _ = raise Match
           in
             aux []
           end
-        val infos = mk_infos prefs_terms raws defs wf_thms wf_thms_raw eval_thmss
+        val infos = mk_infos bindings prefs_terms raws defs wf_thms wf_thms_raw eval_thmss
       in
         lthy 
         |> note wf_thms_raw "_wf_raw" []

@@ -190,7 +190,7 @@ begin
 
 lemma sds_automorphism:
   assumes perm: "\<sigma> permutes alts" and wf: "is_pref_profile R"
-  assumes eq: "anonymous_profile agents R = anonymous_profile agents (permute_profile \<sigma> R)"
+  assumes eq: "anonymous_profile R = anonymous_profile (permute_profile \<sigma> R)"
   shows   "map_pmf \<sigma> (sds R) = sds R"
 proof -
   from wf interpret pref_profile_wf agents alts R .

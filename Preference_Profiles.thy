@@ -372,32 +372,54 @@ subsection \<open>Anonymous profiles\<close>
 
 type_synonym ('agent, 'alt) apref_profile = "'alt set list multiset"
 
-definition anonymous_profile :: "'agent set \<Rightarrow> ('agent, 'alt) pref_profile \<Rightarrow> ('agent, 'alt) apref_profile" 
-  where "anonymous_profile agents R = image_mset (weak_ranking \<circ> R) (mset_set agents)"
+definition anonymous_profile :: "('agent, 'alt) pref_profile \<Rightarrow> ('agent, 'alt) apref_profile" 
+  where anonymous_profile_auxdef:
+    "anonymous_profile R = image_mset (weak_ranking \<circ> R) (mset_set {i. R i \<noteq> (\<lambda>_ _. False)})"
+
+lemma (in pref_profile_wf) agents_eq:
+  "agents = {i. R i \<noteq> (\<lambda>_ _. False)}"
+proof safe
+  fix i assume i: "i \<in> agents" and Ri: "R i = (\<lambda>_ _. False)"
+  from i interpret preorder_on alts "R i" by simp
+  from carrier_eq Ri nonempty_alts show False by simp
+next
+  fix i assume "R i \<noteq> (\<lambda>_ _. False)"
+  thus "i \<in> agents" using prefs_undefined'[of i] by (cases "i \<in> agents") auto
+qed
+
+lemma (in pref_profile_wf) anonymous_profile_def:
+  "anonymous_profile R = image_mset (weak_ranking \<circ> R) (mset_set agents)"
+  by (simp only: agents_eq anonymous_profile_auxdef)
 
 lemma (in pref_profile_wf) anonymous_profile_permute:
   assumes "\<sigma> permutes alts"  "finite agents" 
-  shows   "anonymous_profile agents (permute_profile \<sigma> R) = image_mset (map (op ` \<sigma>)) (anonymous_profile agents R)"
+  shows   "anonymous_profile (permute_profile \<sigma> R) = 
+             image_mset (map (op ` \<sigma>)) (anonymous_profile R)"
 proof -
-  have "anonymous_profile agents (permute_profile \<sigma> R) = 
+  from assms(1) interpret R': pref_profile_wf agents alts "permute_profile \<sigma> R"
+    by (rule wf_permute_alts)
+  have "anonymous_profile (permute_profile \<sigma> R) = 
           {#weak_ranking (map_relation (inv \<sigma>) (R x)). x \<in># mset_set agents#}"
-    by (simp add: anonymous_profile_def multiset.map_comp permute_profile_map_relation o_def)
+    unfolding R'.anonymous_profile_def
+    by (simp add:  multiset.map_comp permute_profile_map_relation o_def)
   also from assms have "\<dots> = {#map (op ` \<sigma>) (weak_ranking (R x)). x \<in># mset_set agents#}"
     by (intro image_mset_cong)
        (simp add: finite_complete_preorder_on.weak_ranking_permute[of alts])
-  also have "\<dots> = image_mset (map (op ` \<sigma>)) (anonymous_profile agents R)"
+  also have "\<dots> = image_mset (map (op ` \<sigma>)) (anonymous_profile R)"
     by (simp add: anonymous_profile_def multiset.map_comp o_def)
   finally show ?thesis .
 qed
 
-lemma anonymous_profile_update:
-  assumes i:  "i \<in> agents" and fin [simp]: "finite agents"
-  shows   "anonymous_profile agents (R(i := Ri')) =
-             anonymous_profile agents R - {#weak_ranking (R i)#} + {#weak_ranking Ri'#}"
+lemma (in pref_profile_wf) anonymous_profile_update:
+  assumes i:  "i \<in> agents" and fin [simp]: "finite agents" and "complete_preorder_on alts Ri'"
+  shows   "anonymous_profile (R(i := Ri')) =
+             anonymous_profile R - {#weak_ranking (R i)#} + {#weak_ranking Ri'#}"
 proof -
-  have "anonymous_profile agents (R(i := Ri')) = 
+  from assms interpret R': pref_profile_wf agents alts "R(i := Ri')"
+    by (simp add: finite_complete_preorder_on_iff wf_update)
+  have "anonymous_profile (R(i := Ri')) = 
           {#weak_ranking (if x = i then Ri' else R x). x \<in># mset_set agents#}"
-    by (simp add: anonymous_profile_def o_def)
+    by (simp add: R'.anonymous_profile_def o_def)
   also have "\<dots> = {#if x = i then weak_ranking Ri' else weak_ranking (R x). x \<in># mset_set agents#}"
     by (intro image_mset_cong) simp_all
   also have "\<dots> = {#weak_ranking Ri'. x \<in># mset_set {x \<in> agents. x = i}#} +
@@ -413,7 +435,7 @@ proof -
             {#weak_ranking (R x). x \<in># mset_set agents#} - {#weak_ranking (R i)#}"
       by (subst image_mset_Diff) (simp_all add: in_multiset_in_set mset_le_single)
   also have "{#weak_ranking Ri'#} + \<dots> = 
-               anonymous_profile agents R - {#weak_ranking (R i)#} + {#weak_ranking Ri'#}"
+               anonymous_profile R - {#weak_ranking (R i)#} + {#weak_ranking Ri'#}"
     by (simp add: anonymous_profile_def add_ac o_def)
   finally show ?thesis .
 qed
@@ -653,12 +675,14 @@ qed simp_all
 
 lemma anonymise_prefs_from_table:
   assumes "prefs_from_table_wf agents alts xs"
-  shows   "anonymous_profile agents (prefs_from_table xs) = mset (map snd xs)"
+  shows   "anonymous_profile (prefs_from_table xs) = mset (map snd xs)"
 proof -
+  from assms interpret pref_profile_wf agents alts "prefs_from_table xs"
+    by (simp add: pref_profile_from_tableI) 
   from assms have agents: "agents = fst ` set xs"
     by (simp add: prefs_from_table_wf_def)
   hence [simp]: "finite agents" by auto
-  have "anonymous_profile agents (prefs_from_table xs) = 
+  have "anonymous_profile (prefs_from_table xs) = 
           {#weak_ranking (prefs_from_table xs x). x \<in># mset_set agents#}"
     by (simp add: o_def anonymous_profile_def)
   also from assms have "\<dots> = {#the (map_of xs i). i \<in># mset_set agents#}"
@@ -805,7 +829,7 @@ proof -
 qed
 
 lemma anonymous_profile_agent_permutation:
-  assumes eq:  "anonymous_profile agents R1 = anonymous_profile agents R2"
+  assumes eq:  "anonymous_profile R1 = anonymous_profile R2"
   assumes wf:  "pref_profile_wf agents alts R1" "pref_profile_wf agents alts R2"
   assumes fin: "finite agents"
   obtains \<pi> where "\<pi> permutes agents" "R2 \<circ> \<pi> = R1"
@@ -815,7 +839,7 @@ proof -
 
   from eq have "{#weak_ranking (R1 x). x \<in># mset_set agents#} = 
                   {#weak_ranking (R2 x). x \<in># mset_set agents#}"
-    by (simp add: anonymous_profile_def o_def)
+    by (simp add: R1.anonymous_profile_def R2.anonymous_profile_def o_def)
   from image_mset_eq_permutation[OF this fin] guess \<pi> . note \<pi> = this
   from \<pi> have wf': "pref_profile_wf agents alts (R2 \<circ> \<pi>)"
     by (intro R2.wf_permute_agents)

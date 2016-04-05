@@ -104,17 +104,17 @@ fun compare (Rat (a,b), Rat (c,d)) = Int.compare (a * d, b * c)
 
 fun dest_num x = 
   case x of 
-    Const ("Code_Numeral.int_of_integer", _) $ x => dest_num x
+    Const (@{const_name "Code_Numeral.int_of_integer"}, _) $ x => dest_num x
   | _ => HOLogic.dest_number x
 
 fun dest_rat_numeral t =
   case t of 
-    (Const ("Rings.divide_class.divide",_)) $ a $ b
+    (Const (@{const_name "Rings.divide_class.divide"},_)) $ a $ b
       => of_quotient (snd (dest_num a), snd (dest_num b))
-  | (Const ("Groups.uminus_class.uminus",_)) $ a 
+  | (Const (@{const_name "Groups.uminus_class.uminus"},_)) $ a 
       => rneg (dest_rat_numeral a)
-  | (Const ("Rat.field_char_0_class.of_rat",_)) $ a => dest_rat_numeral a
-  |  (Const ("Rat.Frct", _) $ (Const ("Product_Type.Pair", _) $ a $ b))
+  | (Const (@{const_name "Rat.field_char_0_class.of_rat"},_)) $ a => dest_rat_numeral a
+  |  (Const (@{const_name "Rat.Frct"}, _) $ (Const (@{const_name "Product_Type.Pair"}, _) $ a $ b))
       => of_quotient (snd (dest_num a), snd (dest_num b))
   | _ => from_int (snd (dest_num t));
 

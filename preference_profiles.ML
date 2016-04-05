@@ -21,7 +21,9 @@ val eq_prefs : (prefs * prefs) -> bool
 val equiv_profile_anonymity : (profile * profile) -> bool
 
 val agents_of_profile : profile -> term list
+val agentT : profile -> typ
 val alts_of_profile : profile -> term list
+val altT : profile -> typ
 
 val permute_profile : term permutation -> profile -> profile
 
@@ -89,9 +91,11 @@ fun equiv_profile_anonymity xy =
   in
     submultiset eq_prefs xy andalso submultiset eq_prefs (swap xy)
   end
-  
+
 val agents_of_profile = map fst
-val alts_of_profile = List.concat o snd o hd
+val agentT = hd #> fst #> fastype_of
+val alts_of_profile = hd #> snd #> List.concat
+val altT = hd #> snd #> hd #> hd #> fastype_of
 
 local
   val mem = member op aconv
