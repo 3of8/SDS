@@ -30,7 +30,8 @@ sig
   val floor : rat -> int
   val ceil : rat -> int
 
-  val dest_rat_numeral : term -> rat
+  val dest_rat_number : term -> rat
+  val mk_rat_number : typ -> rat -> term
 
 end
 
@@ -107,16 +108,21 @@ fun dest_num x =
     Const (@{const_name "Code_Numeral.int_of_integer"}, _) $ x => dest_num x
   | _ => HOLogic.dest_number x
 
-fun dest_rat_numeral t =
+fun dest_rat_number t =
   case t of 
     (Const (@{const_name "Rings.divide_class.divide"},_)) $ a $ b
       => of_quotient (snd (dest_num a), snd (dest_num b))
   | (Const (@{const_name "Groups.uminus_class.uminus"},_)) $ a 
-      => rneg (dest_rat_numeral a)
-  | (Const (@{const_name "Rat.field_char_0_class.of_rat"},_)) $ a => dest_rat_numeral a
+      => rneg (dest_rat_number a)
+  | (Const (@{const_name "Rat.field_char_0_class.of_rat"},_)) $ a => dest_rat_number a
   |  (Const (@{const_name "Rat.Frct"}, _) $ (Const (@{const_name "Product_Type.Pair"}, _) $ a $ b))
       => of_quotient (snd (dest_num a), snd (dest_num b))
   | _ => from_int (snd (dest_num t));
+
+fun mk_rat_number ty (Rat (a, 1)) = HOLogic.mk_number ty a
+  | mk_rat_number ty (Rat (a, b)) = 
+      Const (@{const_name Rings.divide_class.divide}, ty --> ty --> ty) $ 
+        HOLogic.mk_number ty a $ HOLogic.mk_number ty b
 
 end
 

@@ -155,8 +155,12 @@ lemmas eval_SD =
   R11_eval R12_eval R13_eval
 
 lemma Pareto_strict_iff: 
-  "is_pref_profile R \<Longrightarrow> x \<prec>[Pareto(R)] y \<longleftrightarrow> (\<forall>i\<in>agents. R i x y) \<and> (\<exists>i\<in>agents. x \<prec>[R i] y)"
-  by (intro pref_profile_wf.Pareto_strict_iff[of agents])
+  assumes "is_pref_profile R"
+  shows   "x \<prec>[Pareto(R)] y \<longleftrightarrow> (\<forall>i\<in>agents. R i x y) \<and> (\<exists>i\<in>agents. x \<prec>[R i] y)"
+proof -
+  from assms interpret pref_profile_wf agents alts R .
+  show ?thesis by (rule Pareto_strict_iff)
+qed
   
   
   

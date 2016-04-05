@@ -237,7 +237,7 @@ fun derive_orbit_equations p =
     val automorphisms = find_an_automorphisms p
     val reprs = eqclasses op aconv alts (map fst automorphisms)
     val repr = AList.lookup op aconv reprs #> the
-    val automorphisms = filter_out (fn ((a,b), _) => b aconv repr a) automorphisms
+    val automorphisms = filter (fn ((a,b), _) => b aconv repr a) automorphisms
   in
     automorphisms
   end
@@ -333,12 +333,14 @@ fun power_set xs =
     go [] xs |> sort (int_ord o apply2 length)
   end
 
+fun is_singleton [_] = true
+  | is_singleton _ = false
 
 fun find_minimal_inefficient_supports p =
   let
     val alts = subtract op aconv (map #1 (pareto_losers p)) (alts_of_profile p)
     fun go supp acc =
-      if List.null supp orelse
+      if List.null supp orelse is_singleton supp orelse
             member (fn (a, b) => subset op aconv (#1 b, a)) acc supp then
         acc
       else 
