@@ -1,0 +1,330 @@
+47 profiles
+
+p18a0 p18a1 p18a2 p18a3 
+1 agent : 2 ~ 3 > 0 ~ 1
+1 agent : 1 ~ 3 > 0 > 2
+1 agent : 0 > 1 > 2 ~ 3
+1 agent : 0 ~ 2 > 1 ~ 3
+
+
+p112a0 p112a2 p112a3 
+1 agent : 0 ~ 2 > 1 ~ 3
+1 agent : 2 ~ 3 > 0 > 1
+1 agent : 1 ~ 3 > 0 > 2
+1 agent : 0 > 1 > 2 ~ 3
+
+
+p178a0 p178a1 p178a2 p178a3 
+1 agent : 0 ~ 1 > 2 ~ 3
+1 agent : 2 ~ 3 > 0 ~ 1
+1 agent : 3 > 0 ~ 1 > 2
+1 agent : 2 > 0 > 1 ~ 3
+
+
+p174a0 p174a1 p174a2 p174a3 
+1 agent : 0 ~ 1 > 2 ~ 3
+1 agent : 0 ~ 3 > 1 ~ 2
+1 agent : 2 > 0 ~ 1 > 3
+1 agent : 3 > 2 > 0 ~ 1
+
+
+p44a0 p44a1 p44a2 p44a3 
+1 agent : 2 ~ 3 > 0 ~ 1
+1 agent : 0 ~ 1 > 2 ~ 3
+1 agent : 0 ~ 2 > 3 > 1
+1 agent : 3 > 0 ~ 1 > 2
+
+
+p91a0 p91a1 p91a2 p91a3 
+1 agent : 0 ~ 1 > 2 ~ 3
+1 agent : 2 ~ 3 > 0 ~ 1
+1 agent : 0 ~ 2 > 1 ~ 3
+1 agent : 3 > 1 > 0 > 2
+
+
+p129a0 p129a1 p129a2 p129a3 
+1 agent : 0 ~ 1 > 2 ~ 3
+1 agent : 2 ~ 3 > 0 ~ 1
+1 agent : 0 > 2 > 3 > 1
+1 agent : 3 > 0 ~ 1 > 2
+
+
+p175a0 p175a1 p175a2 p175a3 
+1 agent : 0 ~ 1 > 2 ~ 3
+1 agent : 0 ~ 2 > 1 ~ 3
+1 agent : 3 > 0 ~ 1 > 2
+1 agent : 3 > 2 > 0 ~ 1
+
+
+p55a0 p55a1 p55a2 p55a3 
+1 agent : 0 ~ 1 > 2 ~ 3
+1 agent : 0 ~ 3 > 2 > 1
+1 agent : 3 > 2 > 0 ~ 1
+1 agent : 0 ~ 1 ~ 2 > 3
+
+
+p0a0 p0a1 p0a2 p0a3 
+1 agent : 0 ~ 1 > 2 ~ 3
+1 agent : 2 ~ 3 > 0 ~ 1
+1 agent : 0 ~ 2 > 3 > 1
+1 agent : 1 ~ 3 > 0 > 2
+
+
+p792a0 p792a1 p792a2 p792a3 
+1 agent : 0 ~ 1 > 2 ~ 3
+1 agent : 2 ~ 3 > 0 ~ 1
+1 agent : 3 > 0 ~ 1 > 2
+1 agent : 2 > 0 > 1 > 3
+
+
+p42a0 p42a1 p42a2 p42a3 
+1 agent : 2 ~ 3 > 0 ~ 1
+1 agent : 0 ~ 1 > 2 ~ 3
+1 agent : 0 ~ 2 > 3 > 1
+1 agent : 0 ~ 1 ~ 3 > 2
+
+
+p114a0 p114a1 p114a3 
+1 agent : 0 ~ 2 > 1 ~ 3
+1 agent : 2 ~ 3 > 0 > 1
+1 agent : 1 ~ 3 > 0 > 2
+1 agent : 0 > 1 > 3 > 2
+
+
+p654a0 p654a1 p654a2 p654a3 
+1 agent : 0 ~ 1 > 2 ~ 3
+1 agent : 3 > 2 > 0 ~ 1
+1 agent : 0 ~ 1 ~ 2 > 3
+1 agent : 0 > 3 > 2 > 1
+
+
+p7a0 p7a1 p7a2 p7a3 
+1 agent : 0 ~ 1 > 2 ~ 3
+1 agent : 2 ~ 3 > 0 ~ 1
+1 agent : 1 ~ 3 > 0 > 2
+1 agent : 0 > 2 > 3 > 1
+
+
+p127a0 p127a1 p127a2 p127a3 
+1 agent : 0 ~ 1 > 2 ~ 3
+1 agent : 2 ~ 3 > 0 ~ 1
+1 agent : 0 > 2 > 3 > 1
+1 agent : 0 ~ 1 ~ 3 > 2
+
+
+p88a0 p88a1 p88a2 p88a3 
+1 agent : 0 ~ 1 > 2 ~ 3
+1 agent : 2 ~ 3 > 0 ~ 1
+1 agent : 0 ~ 2 > 1 ~ 3
+1 agent : 3 > 0 ~ 1 > 2
+
+
+p573a0 p573a1 p573a2 p573a3 
+1 agent : 0 ~ 1 > 2 ~ 3
+1 agent : 0 ~ 3 > 1 ~ 2
+1 agent : 0 ~ 1 ~ 2 > 3
+1 agent : 3 > 2 > 0 ~ 1
+
+
+p6a0 p6a1 p6a2 p6a3 
+1 agent : 0 ~ 1 > 2 ~ 3
+1 agent : 2 ~ 3 > 0 ~ 1
+1 agent : 1 ~ 3 > 0 > 2
+1 agent : 0 ~ 2 > 1 ~ 3
+
+
+p591a0 p591a2 
+1 agent : 1 ~ 3 > 0 > 2
+1 agent : 1 > 0 > 2 ~ 3
+1 agent : 0 > 2 > 1 ~ 3
+1 agent : 3 > 2 > 0 ~ 1
+
+
+p625a0 p625a1 p625a2 p625a3 
+1 agent : 0 ~ 3 > 2 > 1
+1 agent : 3 > 2 > 0 ~ 1
+1 agent : 2 > 0 ~ 1 > 3
+1 agent : 0 > 1 > 2 ~ 3
+
+
+p642a0 p642a1 p642a2 p642a3 
+1 agent : 0 ~ 2 > 3 > 1
+1 agent : 3 > 2 > 0 ~ 1
+1 agent : 3 > 0 ~ 1 > 2
+1 agent : 0 > 1 > 2 ~ 3
+
+
+p85a0 p85a1 p85a2 p85a3 
+1 agent : 0 ~ 1 > 2 ~ 3
+1 agent : 2 ~ 3 > 0 ~ 1
+1 agent : 0 ~ 2 > 1 ~ 3
+1 agent : 0 ~ 1 ~ 3 > 2
+
+
+p608a0 p608a1 p608a2 p608a3 
+1 agent : 2 ~ 3 > 0 ~ 1
+1 agent : 3 > 1 > 0 > 2
+1 agent : 2 > 0 > 1 ~ 3
+1 agent : 1 > 0 > 2 ~ 3
+
+
+p22a0 p22a1 p22a2 p22a3 
+1 agent : 2 ~ 3 > 0 ~ 1
+1 agent : 1 ~ 3 > 0 > 2
+1 agent : 0 > 1 > 2 ~ 3
+1 agent : 0 > 2 > 1 ~ 3
+
+
+p333a0 p333a1 p333a2 p333a3 
+1 agent : 1 ~ 3 > 0 ~ 2
+1 agent : 2 ~ 3 > 0 ~ 1
+1 agent : 0 > 1 > 2 ~ 3
+1 agent : 0 > 2 > 1 ~ 3
+
+
+p80a0 p80a1 p80a2 p80a3 
+1 agent : 0 ~ 1 > 2 ~ 3
+1 agent : 1 ~ 3 > 0 > 2
+1 agent : 0 ~ 2 > 1 ~ 3
+1 agent : 2 ~ 3 > 0 > 1
+
+
+p249a0 p249a1 p249a2 p249a3 
+1 agent : 2 ~ 3 > 0 > 1
+1 agent : 1 ~ 3 > 0 > 2
+1 agent : 0 > 1 > 2 ~ 3
+1 agent : 0 > 2 > 1 ~ 3
+
+
+p12a0 p12a1 p12a2 p12a3 
+1 agent : 0 ~ 2 > 3 > 1
+1 agent : 1 ~ 3 > 0 > 2
+1 agent : 0 > 1 > 2 ~ 3
+1 agent : 3 > 2 > 0 ~ 1
+
+
+p624a0 p624a1 p624a2 p624a3 
+1 agent : 0 ~ 3 > 2 > 1
+1 agent : 3 > 2 > 0 ~ 1
+1 agent : 2 > 0 ~ 1 > 3
+1 agent : 0 ~ 1 > 3 > 2
+
+
+p48a0 p48a1 p48a2 p48a3 
+1 agent : 1 ~ 3 > 0 > 2
+1 agent : 0 ~ 2 > 3 > 1
+1 agent : 2 > 3 > 0 ~ 1
+1 agent : 0 ~ 1 > 2 > 3
+
+
+p641a0 p641a1 p641a3 
+1 agent : 0 ~ 2 > 3 > 1
+1 agent : 3 > 2 > 0 ~ 1
+1 agent : 3 > 0 ~ 1 > 2
+1 agent : 0 ~ 1 > 3 > 2
+
+
+p30a0 p30a1 p30a2 p30a3 
+1 agent : 2 ~ 3 > 0 ~ 1
+1 agent : 0 ~ 2 > 3 > 1
+1 agent : 0 > 1 > 2 ~ 3
+1 agent : 3 > 0 ~ 1 > 2
+
+
+p285a0 p285a1 p285a3 
+1 agent : 0 ~ 1 > 2 ~ 3
+1 agent : 0 > 2 > 3 > 1
+1 agent : 1 > 0 ~ 3 > 2
+1 agent : 2 > 3 > 0 ~ 1
+
+
+p496a0 p496a1 p496a2 
+1 agent : 0 ~ 3 > 2 > 1
+1 agent : 0 > 1 > 2 ~ 3
+1 agent : 0 ~ 1 ~ 2 > 3
+1 agent : 3 > 2 > 0 ~ 1
+
+
+p3a0 p3a1 p3a2 p3a3 
+1 agent : 2 ~ 3 > 0 ~ 1
+1 agent : 0 ~ 2 > 3 > 1
+1 agent : 1 ~ 3 > 0 > 2
+1 agent : 0 > 1 > 2 ~ 3
+
+
+p335a0 p335a1 p335a2 p335a3 
+1 agent : 0 ~ 2 > 1 ~ 3
+1 agent : 1 ~ 3 > 0 ~ 2
+1 agent : 0 > 1 > 2 ~ 3
+1 agent : 2 > 3 > 0 ~ 1
+
+
+p248a0 p248a1 p248a2 p248a3 
+1 agent : 2 ~ 3 > 0 > 1
+1 agent : 1 ~ 3 > 0 > 2
+1 agent : 0 > 1 > 2 ~ 3
+1 agent : 0 ~ 2 > 1 > 3
+
+
+p9a0 p9a2 p9a3 
+1 agent : 0 ~ 2 > 3 > 1
+1 agent : 1 ~ 3 > 0 > 2
+1 agent : 0 > 1 > 2 ~ 3
+1 agent : 2 ~ 3 > 0 > 1
+
+
+p489a0 p489a1 p489a2 p489a3 
+1 agent : 0 ~ 3 > 2 > 1
+1 agent : 0 ~ 1 > 2 > 3
+1 agent : 0 ~ 1 ~ 2 > 3
+1 agent : 3 > 2 > 0 ~ 1
+
+
+p409a0 p409a1 p409a2 
+1 agent : 0 ~ 3 > 2 > 1
+1 agent : 0 ~ 1 > 3 > 2
+1 agent : 0 ~ 1 ~ 2 > 3
+1 agent : 3 > 2 > 0 ~ 1
+
+
+p130a0 p130a1 p130a2 p130a3 
+1 agent : 2 ~ 3 > 0 ~ 1
+1 agent : 0 ~ 1 > 2 ~ 3
+1 agent : 3 > 1 > 0 > 2
+1 agent : 2 > 0 > 1 ~ 3
+
+
+p548a0 p548a1 p548a2 p548a3 
+1 agent : 0 ~ 1 > 2 ~ 3
+1 agent : 2 ~ 3 > 0 ~ 1
+1 agent : 3 > 0 ~ 1 > 2
+1 agent : 0 > 2 ~ 3 > 1
+
+
+p108a0 p108a1 p108a2 p108a3 
+1 agent : 2 ~ 3 > 0 ~ 1
+1 agent : 0 ~ 2 > 3 > 1
+1 agent : 0 ~ 1 > 3 > 2
+1 agent : 0 ~ 1 ~ 3 > 2
+
+
+p135a0 p135a1 p135a2 p135a3 
+1 agent : 0 ~ 2 > 3 > 1
+1 agent : 1 ~ 3 > 0 > 2
+1 agent : 0 ~ 1 > 2 > 3
+1 agent : 2 ~ 3 > 1 > 0
+
+
+p377a0 p377a1 p377a2 p377a3 
+1 agent : 1 ~ 3 > 0 > 2
+1 agent : 3 > 2 > 0 ~ 1
+1 agent : 0 ~ 2 > 1 ~ 3
+1 agent : 1 > 0 > 2 ~ 3
+
+
+p58a0 p58a1 p58a3 
+1 agent : 0 ~ 1 > 2 ~ 3
+1 agent : 0 ~ 3 > 2 > 1
+1 agent : 3 > 2 > 0 ~ 1
+1 agent : 2 > 0 ~ 1 > 3
+
