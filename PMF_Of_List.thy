@@ -93,4 +93,50 @@ proof clarify
   qed
 qed
 
+lemma finite_set_pmf_of_list:
+  assumes "pmf_of_list_wf xs"
+  shows   "finite (set_pmf (pmf_of_list xs))"
+  using assms by (rule finite_subset[OF set_pmf_of_list]) simp_all
+
+lemma emeasure_Int_set_pmf:
+  "emeasure (measure_pmf p) (A \<inter> set_pmf p) = emeasure (measure_pmf p) A"
+  by (rule emeasure_eq_AE) (auto simp: AE_measure_pmf_iff)
+
+lemma measure_Int_set_pmf:
+  "measure (measure_pmf p) (A \<inter> set_pmf p) = measure (measure_pmf p) A"
+  using emeasure_Int_set_pmf[of p A] by (simp add: Sigma_Algebra.measure_def)
+
+lemma measure_pmf_of_list:
+  assumes "pmf_of_list_wf xs"
+  shows   "measure (pmf_of_list xs) A = listsum (map snd (filter (\<lambda>x. fst x \<in> A) xs))"
+proof -
+  have "emeasure (pmf_of_list xs) A = nn_integral (measure_pmf (pmf_of_list xs)) (indicator A)"
+    by simp
+  also have "\<dots> = ereal (\<Sum>x\<in>set_pmf (pmf_of_list xs). indicator A x * pmf (pmf_of_list xs) x)"
+    (is "_ = ereal ?S") using assms
+    by (subst nn_integral_measure_pmf_finite) 
+       (simp_all add: finite_set_pmf_of_list ereal_indicator [symmetric] pmf_pmf_of_list)
+  also have "?S = (\<Sum>x\<in>set (map fst xs). indicator A x * pmf (pmf_of_list xs) x)"
+    using assms by (intro setsum.mono_neutral_left set_pmf_of_list) (auto simp: set_pmf_eq)
+  also have "\<dots> = (\<Sum>x\<in>set (map fst xs). indicator A x * 
+                      listsum (map snd (filter (\<lambda>z. fst z = x) xs)))"
+    using assms by (simp add: pmf_pmf_of_list)
+  also have "\<dots> = (\<Sum>x\<in>set (map fst xs). listsum (map snd (filter (\<lambda>z. fst z = x \<and> x \<in> A) xs)))"
+    by (intro setsum.cong) (auto simp: indicator_def)
+  also have "\<dots> = (\<Sum>x\<in>set (map fst xs). (\<Sum>xa = 0..<length xs.
+                     if fst (xs ! xa) = x \<and> x \<in> A then snd (xs ! xa) else 0))"
+    by (intro setsum.cong refl, subst listsum_map_filter, subst listsum_setsum_nth) simp
+  also have "\<dots> = (\<Sum>xa = 0..<length xs. (\<Sum>x\<in>set (map fst xs). 
+                     if fst (xs ! xa) = x \<and> x \<in> A then snd (xs ! xa) else 0))"
+    by (rule setsum.commute)
+  also have "\<dots> = (\<Sum>xa = 0..<length xs. if fst (xs ! xa) \<in> A then 
+                     (\<Sum>x\<in>set (map fst xs). if x = fst (xs ! xa) then snd (xs ! xa) else 0) else 0)"
+    by (auto intro!: setsum.cong setsum.neutral)
+  also have "\<dots> = (\<Sum>xa = 0..<length xs. if fst (xs ! xa) \<in> A then snd (xs ! xa) else 0)"
+    by (intro setsum.cong refl) (simp_all add: setsum.delta)
+  also have "\<dots> = listsum (map snd (filter (\<lambda>x. fst x \<in> A) xs))"
+    by (subst listsum_map_filter, subst listsum_setsum_nth) simp_all
+  finally show ?thesis by (simp add: Sigma_Algebra.measure_def)
+qed
+
 end

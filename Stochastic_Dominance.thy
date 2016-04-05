@@ -4,6 +4,7 @@ theory Stochastic_Dominance
 imports 
   Complex_Main 
   Probability 
+  Missing_PMF
   Preference_Profiles
 begin
 
@@ -50,6 +51,14 @@ type_synonym 'alt lottery = "'alt pmf"
 
 definition lotteries_on :: "'a set \<Rightarrow> 'a lottery set" where
   "lotteries_on A = {p. set_pmf p \<subseteq> A}"
+
+lemma pmf_of_set_lottery:
+  "A \<noteq> {} \<Longrightarrow> finite A \<Longrightarrow> A \<subseteq> B \<Longrightarrow> pmf_of_set A \<in> lotteries_on B"
+  unfolding lotteries_on_def by auto
+
+lemma pmf_of_list_lottery: 
+  "pmf_of_list_wf xs \<Longrightarrow> set (map fst xs) \<subseteq> A \<Longrightarrow> pmf_of_list xs \<in> lotteries_on A"
+  using set_pmf_of_list[of xs] by (auto simp: lotteries_on_def)
 
 lemma return_pmf_in_lotteries_on [simp,intro]: 
   "x \<in> A \<Longrightarrow> return_pmf x \<in> lotteries_on A"
@@ -248,14 +257,28 @@ end
 subsubsection \<open>SD efficient lotteries\<close>
 
 definition SD_efficient :: "('agent, 'alt) pref_profile \<Rightarrow> 'alt lottery \<Rightarrow> bool" where
-  SD_efficient_auxdef:
-    "SD_efficient R p \<longleftrightarrow>
-       (let agents = {i. \<exists>x. R i x x};
-            alts = {x. \<exists>i. R i x x}
-        in \<not>(\<exists>q\<in>lotteries_on alts. (\<forall>i\<in>agents. q \<succeq>[SD(R i)] p) \<and> (\<exists>i\<in>agents. q \<succ>[SD(R i)] p)))"
+  SD_efficient_auxdef: 
+    "SD_efficient R p \<longleftrightarrow> \<not>(\<exists>q\<in>lotteries_on {x. \<exists>i. R i x x}. q \<succ>[Pareto (SD \<circ> R)] p)"
+
 
 context pref_profile_wf
 begin
+
+lemma not_outside: 
+  assumes "x \<preceq>[R i] y"
+  shows   "i \<in> agents" "x \<in> alts" "y \<in> alts"
+proof -
+  from assms show "i \<in> agents" by (cases "i \<in> agents") auto
+  then interpret preorder_on alts "R i" by simp
+  from assms show "x \<in> alts" "y \<in> alts" by (simp_all add: not_outside)
+qed
+
+lemma SD_empty [simp]: "SD (\<lambda>_ _. False) = (\<lambda>_ _. False)"
+  by (auto simp: fun_eq_iff SD_def lotteries_on_def set_pmf_not_empty)
+
+sublocale SD: preorder_family agents "lotteries_on alts" "SD \<circ> R" unfolding o_def
+  by (intro preorder_family.intro SD_is_preorder)
+     (simp_all add: preorder_on.SD_is_preorder' prefs_undefined')
 
 text \<open>
   A lottery is considered SD-efficient if there is no other lottery such that 
@@ -264,21 +287,17 @@ text \<open>
 \<close>
 lemma SD_efficient_def:
   "SD_efficient R p \<longleftrightarrow>
-     \<not>(\<exists>q\<in>lotteries_on alts. (\<forall>i\<in>agents. q \<succeq>[SD(R i)] p) \<and> (\<exists>i\<in>agents. q \<succ>[SD(R i)] p))"
+     \<not>(\<exists>q\<in>lotteries_on alts. (\<forall>i\<in>agents. q \<succeq>[SD(R i)] p) \<and> (\<exists>i\<in>agents. q \<succ>[SD(R i)] p))" 
+  (is "_ \<longleftrightarrow> ?rhs")
 proof -
-  from nonempty_alts obtain x where x: "x \<in> alts" by blast
-  from nonempty_agents obtain i where i: "i \<in> agents" by blast
-  from x have "i \<in> agents \<longleftrightarrow> (\<exists>x. R i x x)" for i
-    by (cases "i \<in> agents") (auto intro!: exI[of _ x] preorder_on.refl[OF prefs_wf'(2)])
-  hence A: "agents = {i. \<exists>x. R i x x}" by blast
-  have B: "alts = {x. \<exists>i. R i x x}"
-  proof safe
-    fix x j assume x: "R j x x"
-    hence "j \<in> agents" by (cases "j \<in> agents") auto
-    with preorder_on.carrier_eq[OF prefs_wf'(2), of j] x show "x \<in> alts" by simp
-  qed (auto intro!: exI[of _ i] preorder_on.refl[OF prefs_wf'(2)] i)
-  from A B show ?thesis unfolding SD_efficient_auxdef 
-    by (simp only: A [symmetric] B [symmetric] Let_def)
+  have "SD_efficient R p \<longleftrightarrow> \<not>(\<exists>q\<in>lotteries_on {x. \<exists>i. R i x x}. q \<succ>[Pareto (SD \<circ> R)] p)"
+    unfolding SD_efficient_auxdef ..
+  also from nonempty_agents obtain i where i: "i \<in> agents" by blast
+  with preorder_on.refl[of alts "R i"] 
+    have "{x. \<exists>i. R i x x} = alts" by (auto intro!: exI[of _ i] not_outside)
+  also have "(\<not> (\<exists>q\<in>lotteries_on alts. p \<prec>[Pareto (SD \<circ> R)] q)) \<longleftrightarrow> ?rhs"
+    by (subst SD.Pareto_strict_iff) simp_all
+  finally show ?thesis .
 qed
 
 lemma SD_inefficientI:

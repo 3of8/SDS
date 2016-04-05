@@ -183,7 +183,7 @@ qed
 end
 
 
-locale anonymous_neutral_sds = 
+locale an_sds = 
   anonymous_sds agents alts sds + neutral_sds agents alts sds
   for agents :: "'agent set" and alts :: "'alt set" and sds
 begin
@@ -206,6 +206,7 @@ qed
 
 end
 
+
 subsection \<open>Ex-post efficiency\<close>
 
 locale ex_post_efficient_sds = social_decision_scheme agents alts sds
@@ -219,6 +220,16 @@ lemma ex_post_efficient':
   shows   "pmf (sds R) x = 0"
   using ex_post_efficient[of R] assms 
   by (auto simp: set_pmf_eq pareto_losers_def)
+
+lemma ex_post_efficient'':
+  assumes "is_pref_profile R" "i \<in> agents"  "\<forall>i\<in>agents. y \<succeq>[R i] x" "\<not>y \<preceq>[R i] x"
+  shows   "pmf (sds R) x = 0"
+proof -
+  from assms(1) interpret pref_profile_wf agents alts R .
+  from assms(2-) show ?thesis
+    by (intro ex_post_efficient'[OF assms(1), of _ y])
+       (auto simp: Pareto_iff strongly_preferred_def)
+qed
 
 end
 
@@ -282,6 +293,18 @@ proof (rule ccontr)
   moreover from SD_efficient wf have "SD_efficient R (sds R)" .
   ultimately show False by contradiction
 qed
+
+lemma SD_inefficient_support':
+  assumes wf: "is_pref_profile R" 
+  assumes A: "A \<noteq> {}" "A \<subseteq> alts" and 
+     wit: "p \<in> lotteries" "\<forall>i\<in>agents. p \<succeq>[SD(R i)] pmf_of_set A" "i \<in> agents" 
+          "\<not>p \<preceq>[SD(R i)] pmf_of_set A"
+  shows   "\<exists>x\<in>A. pmf (sds R) x = 0"
+proof (rule SD_inefficient_support)
+  from wf interpret pref_profile_wf agents alts R .
+  from wit show "\<not>SD_efficient R (pmf_of_set A)"
+    by (intro SD_inefficientI') (auto intro!: bexI[of _ i] simp: strongly_preferred_def)
+qed fact+
 
 end
 

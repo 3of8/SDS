@@ -146,23 +146,26 @@ lemma pref_profile_from_tableI':
   shows   "pref_profile_wf agents alts R1"
   using assms by (simp add: pref_profile_from_tableI)
 
+
 subsection \<open>Automorphisms\<close>
 
 lemma an_sds_automorphism_aux:
   assumes wf: "pref_profile_wf agents alts R"
-  assumes eq: "anonymous_profile agents (permute_profile \<sigma> R) = anonymous_profile agents R"
+  assumes an: "an_sds agents alts sds"
+  assumes eq: "image_mset (map (op ` \<sigma>)) (anonymous_profile agents R) = anonymous_profile agents R"
   assumes perm: "\<sigma> permutes alts"
-  assumes "anonymous_neutral_sds agents alts sds"
-  assumes x: "x \<in> alts"
+  assumes x:  "x \<in> alts"
   shows   "pmf (sds R) (\<sigma> x) = pmf (sds R) x"
 proof -
-  from assms(4) interpret anonymous_neutral_sds agents alts sds .
+  from wf interpret pref_profile_wf agents alts R .
+  from an interpret an_sds agents alts sds .
   from perm x have "pmf (sds R) x = pmf (map_pmf \<sigma> (sds R)) (\<sigma> x)"
     by (simp add: pmf_map_inj' permutes_inj)
   also from assms have "map_pmf \<sigma> (sds R) = sds R"
-    by (intro sds_automorphism) simp_all
+    by (intro sds_automorphism) (simp_all add: anonymous_profile_permute)
   finally show ?thesis ..
 qed
+
 
 ML \<open>
 
@@ -362,64 +365,6 @@ val _ =
      Parse.and_list1 parse_pref_profile >> preference_profile_cmd);
 
 end
-\<close>
-
-
-(* TODO: For testing only; can be removed *)
-datatype agents = A1 | A2 | A3 | A4
-datatype alts = a | b | c | d
-
-preference_profile 
-  agents: "{A1, A2, A3, A4}"
-  alts:   "{a, b, c, d}"
-  where R1  = A1: [a,c], [b,d]     A2: [b,d], [a,c]     A3: [a,d], b, c     A4: [b,c], a, d
-    and R2  = A1: [a,c], [b,d]     A2: [b,d], [a,c]     A3: a, d, [b,c]     A4: b, c, [a, d]
-    and R3  = A1: [a,c], [b,d]     A2: [b,d], [a,c]     A3: [a,d], b, c     A4: d, c, a, b
-    and R4  = A1: [a,c], [b,d]     A2: [b,d], [a,c]     A3: [c,b], d, a     A4: b, a, c, d
-by (simp_all add: insert_eq_iff)
-
-lemma "anonymous_profile {A1, A2, A3, A4} R1 = 
-  {#[{a, c}, {b, d}], [{b, d}, {a, c}], [{a, d}, {b}, {c}], [{b, c}, {a}, {d}]#}"
-  by (simp add: R1_eval add_ac)
-
-lemma
-  defines "\<sigma> \<equiv> permutation_of_list [(a,b),(b,a),(c,d),(d,c)]"
-  assumes "anonymous_neutral_sds {A1,A2,A3,A4} {a,b,c,d} sds"
-  shows   "pmf (sds R1) (\<sigma> a) = pmf (sds R1) a"
-  by (rule an_sds_automorphism_aux[OF R1_wf, of \<sigma> sds])
-     (simp_all add: assms insert_commute insert_eq_iff add_ac
-        distincts_Cons pref_profile_wf.anonymous_profile_permute[OF R1_wf] R1_eval)
-
-lemma
-  defines "\<sigma> \<equiv> lists_succ [[a,b],[c,d]]"
-  assumes "anonymous_neutral_sds {A1,A2,A3,A4} {a,b,c,d} sds"
-  shows   "pmf (sds R1) (\<sigma> a) = pmf (sds R1) a"
-  apply (rule an_sds_automorphism_aux[OF R1_wf, of \<sigma> sds])
-  apply (simp_all add: assms lists_succ_permutes' insert_commute 
-           distincts_Cons pref_profile_wf.anonymous_profile_permute[OF R1_wf])
-  apply (simp add: R1_eval list_succ_simps add_ac)
-  done
-
-
-ML_val \<open>
-  open Preference_Profiles;
-  
-  let
-    val ctxt = @{context}
-    val {raw = raw1, ...} = Preference_Profiles_Cmd.get_info @{term R1} ctxt
-    val {raw = raw2, ...} = Preference_Profiles_Cmd.get_info @{term R2} ctxt
-    val {raw = raw3, ...} = Preference_Profiles_Cmd.get_info @{term R3} ctxt
-    val {raw = raw4, ...} = Preference_Profiles_Cmd.get_info @{term R4} ctxt
-    val b = Preference_Profiles.equiv_profile_anonymity (raw1, raw2)
-    val w = Preference_Profiles.find_an_isomorphisms (raw1, raw2) |> Seq.list_of
-    val auto = derive_orbit_equations raw1
-    val cterm = Thm.cterm_of ctxt
-  in
-(*    auto |> map (apfst (apply2 cterm) o apsnd (map (apply2 cterm))) *)
-    find_manipulations (raw1, raw3)
-    |> map (fn (a,b,c) => (cterm a, map (map cterm) b, map (apply2 cterm) c))
-  end
-  
 \<close>
 
 end

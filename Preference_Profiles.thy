@@ -21,6 +21,19 @@ begin
 text \<open>The type of preference profiles\<close>
 type_synonym ('agent, 'alt) pref_profile = "'agent \<Rightarrow> 'alt relation"
 
+locale preorder_family = 
+  fixes dom :: "'a set" and carrier :: "'b set" and R :: "'a \<Rightarrow> 'b relation"
+  assumes nonempty_dom: "dom \<noteq> {}"
+  assumes in_dom [simp]: "i \<in> dom \<Longrightarrow> preorder_on carrier (R i)"
+  assumes not_in_dom [simp]: "i \<notin> dom \<Longrightarrow> \<not>R i x y"
+begin
+
+lemma not_in_dom': "i \<notin> dom \<Longrightarrow> R i = (\<lambda>_ _. False)"
+  by (simp add: fun_eq_iff)
+
+end
+
+
 locale pref_profile_wf =
   fixes agents :: "'agent set" and alts :: "'alt set" and R :: "('agent, 'alt) pref_profile"
   assumes nonempty_agents [simp]: "agents \<noteq> {}" and nonempty_alts [simp]: "alts \<noteq> {}"
@@ -35,13 +48,15 @@ proof -
   show ?thesis by fact
 qed
 
-lemma prefs_undefined': "i \<notin> agents \<Longrightarrow> R i = (\<lambda>_ _. False)"
-  by (intro ext prefs_undefined) simp_all
-
 lemma prefs_wf' [simp]:
   "i \<in> agents \<Longrightarrow> complete_preorder_on alts (R i)" "i \<in> agents \<Longrightarrow> preorder_on alts (R i)"
   using prefs_wf[of i]
   by (simp_all add: finite_complete_preorder_on_def complete_preorder_on_def del: prefs_wf)
+
+sublocale preorder_family agents alts R
+  by (intro preorder_family.intro) simp_all
+
+lemmas prefs_undefined' = not_in_dom'
 
 lemma wf_update:
   "i \<in> agents \<Longrightarrow> finite_complete_preorder_on alts Ri' \<Longrightarrow> 
@@ -141,76 +156,77 @@ definition pareto_losers :: "('agent, 'alt) pref_profile \<Rightarrow> 'alt set"
 lemma pareto_losersI [intro?, simp]: "y \<succ>[Pareto(R)] x \<Longrightarrow> x \<in> pareto_losers R"
   by (auto simp: pareto_losers_def)
 
-context pref_profile_wf
+context preorder_family
 begin
 
 lemma Pareto_iff:
-  "x \<preceq>[Pareto(R)] y \<longleftrightarrow> (\<forall>i\<in>agents. x \<preceq>[R i] y)"
+  "x \<preceq>[Pareto(R)] y \<longleftrightarrow> (\<forall>i\<in>dom. x \<preceq>[R i] y)"
 proof
   assume A: "x \<preceq>[Pareto(R)] y"
   then obtain j where j: "x \<preceq>[R j] x" by (auto simp: Pareto_def)
-  hence j': "j \<in> agents" by (cases "j \<in> agents") auto
-  then interpret complete_preorder_on alts "R j" by simp
-  from j have "x \<in> alts" by (auto simp: carrier_eq)
-  with A preorder_on.refl[OF prefs_wf'(2)]
-    show "(\<forall>i\<in>agents. x \<preceq>[R i] y)" by (auto simp: Pareto_def)
+  hence j': "j \<in> dom" by (cases "j \<in> dom") auto
+  then interpret preorder_on carrier "R j" by simp
+  from j have "x \<in> carrier" by (auto simp: carrier_eq)
+  with A preorder_on.refl[OF in_dom]
+    show "(\<forall>i\<in>dom. x \<preceq>[R i] y)" by (auto simp: Pareto_def)
 next
-  assume A: "(\<forall>i\<in>agents. x \<preceq>[R i] y)"
-  from nonempty_agents obtain j where j: "j \<in> agents" by blast
-  then interpret complete_preorder_on alts "R j" by simp 
+  assume A: "(\<forall>i\<in>dom. x \<preceq>[R i] y)"
+  from nonempty_dom obtain j where j: "j \<in> dom" by blast
+  then interpret preorder_on carrier "R j" by simp 
   from j A have "x \<preceq>[R j] y" by simp
   hence "x \<preceq>[R j] x" using not_outside refl by blast
   with A show "x \<preceq>[Pareto(R)] y" by (auto simp: Pareto_def)
 qed
 
-lemma Pareto_strict_iff: "x \<prec>[Pareto(R)] y \<longleftrightarrow> (\<forall>i\<in>agents. x \<preceq>[R i] y) \<and> (\<exists>i\<in>agents. x \<prec>[R i] y)"
-  by (auto simp: strongly_preferred_def Pareto_iff)
+lemma Pareto_strict_iff: 
+  "x \<prec>[Pareto(R)] y \<longleftrightarrow> (\<forall>i\<in>dom. x \<preceq>[R i] y) \<and> (\<exists>i\<in>dom. x \<prec>[R i] y)"
+  by (auto simp: strongly_preferred_def Pareto_iff nonempty_dom)
 
 lemma Pareto_strictI:
-  assumes "\<And>i. i \<in> agents \<Longrightarrow> x \<preceq>[R i] y" "i \<in> agents" "x \<prec>[R i] y"
+  assumes "\<And>i. i \<in> dom \<Longrightarrow> x \<preceq>[R i] y" "i \<in> dom" "x \<prec>[R i] y"
   shows   "x \<prec>[Pareto(R)] y"
   using assms by (auto simp: Pareto_strict_iff)
 
 lemma Pareto_strictI':
-  assumes "\<And>i. i \<in> agents \<Longrightarrow> x \<preceq>[R i] y" "i \<in> agents" "\<not>x \<succeq>[R i] y"
+  assumes "\<And>i. i \<in> dom \<Longrightarrow> x \<preceq>[R i] y" "i \<in> dom" "\<not>x \<succeq>[R i] y"
   shows   "x \<prec>[Pareto(R)] y"
 proof -
-  from assms interpret complete_preorder_on alts "R i" by simp
+  from assms interpret preorder_on carrier "R i" by simp
   from assms have "x \<prec>[R i] y" by (simp add: strongly_preferred_def)
   with assms show ?thesis by (auto simp: Pareto_strict_iff )
 qed
 
 
-sublocale Pareto: preorder_on alts "Pareto(R)"
+sublocale Pareto: preorder_on carrier "Pareto(R)"
 proof -
-  have "preorder_on alts (R i)" if "i \<in> agents" for i using that by simp_all
+  have "preorder_on carrier (R i)" if "i \<in> dom" for i using that by simp_all
   note A = preorder_on.not_outside[OF this(1)] preorder_on.refl[OF this(1)]
            preorder_on.trans[OF this(1)]
-  from nonempty_agents obtain i where i: "i \<in> agents" by blast
-  show "preorder_on alts (Pareto R)"
+  from nonempty_dom obtain i where i: "i \<in> dom" by blast
+  show "preorder_on carrier (Pareto R)"
   proof
     fix x y assume "x \<preceq>[Pareto(R)] y"
-    with A(1,2)[OF i] i show "x \<in> alts" "y \<in> alts" by (auto simp: Pareto_iff)
+    with A(1,2)[OF i] i show "x \<in> carrier" "y \<in> carrier" by (auto simp: Pareto_iff)
   qed (auto simp: Pareto_iff intro: A)
 qed
 
 lemma pareto_loser_in_alts: 
   assumes "x \<in> pareto_losers R"
-  shows   "x \<in> alts"
+  shows   "x \<in> carrier"
 proof -
-  from assms obtain y i where "i \<in> agents" "x \<prec>[R i] y"
+  from assms obtain y i where "i \<in> dom" "x \<prec>[R i] y"
     by (auto simp: pareto_losers_def Pareto_strict_iff)
-  then interpret complete_preorder_on alts "R i" by simp
+  then interpret preorder_on carrier "R i" by simp
   from \<open>x \<prec>[R i] y\<close> have "x \<preceq>[R i] y" by (simp add: strongly_preferred_def)
-  thus "x \<in> alts" using not_outside by simp
+  thus "x \<in> carrier" using not_outside by simp
 qed
 
 lemma pareto_losersE:
   assumes "x \<in> pareto_losers R"
-  obtains y where "y \<in> alts" "y \<succ>[Pareto(R)] x"
+  obtains y where "y \<in> carrier" "y \<succ>[Pareto(R)] x"
 proof -
   from assms obtain y where "y \<succ>[Pareto(R)] x" unfolding pareto_losers_def by blast
-  moreover from this Pareto.not_outside[of x y] have "y \<in> alts" 
+  moreover from this Pareto.not_outside[of x y] have "y \<in> carrier" 
     by (simp add: strongly_preferred_def)
   ultimately show ?thesis using that by blast
 qed

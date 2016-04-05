@@ -14,6 +14,27 @@ begin
 (* TODO: Move? *)
 adhoc_overloading Monad_Syntax.bind bind_pmf
 
+lemma pmf_not_neg [simp]: "\<not>pmf p x < 0"
+  by (simp add: not_less pmf_nonneg)
+
+lemma set_pmf_eq': "set_pmf p = {x. pmf p x > 0}"
+proof safe
+  fix x assume "x \<in> set_pmf p"
+  hence "pmf p x \<noteq> 0" by (auto simp: set_pmf_eq)
+  with pmf_nonneg[of p x] show "pmf p x > 0" by simp
+qed (auto simp: set_pmf_eq)
+
+lemma setsum_pmf_eq_1:
+  assumes "finite A" "set_pmf p \<subseteq> A"
+  shows   "(\<Sum>x\<in>A. pmf p x) = 1"
+proof -
+  have "(\<Sum>x\<in>A. pmf p x) = measure_pmf.prob p A"
+    by (simp add: measure_measure_pmf_finite assms)
+  also from assms have "\<dots> = 1"
+    by (subst measure_pmf.prob_eq_1) (auto simp: AE_measure_pmf_iff)
+  finally show ?thesis .
+qed
+
 lemma map_pmf_of_set:
   assumes "finite A" "A \<noteq> {}"
   shows   "map_pmf f (pmf_of_set A) = pmf_of_multiset (image_mset f (mset_set A))" 

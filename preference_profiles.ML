@@ -25,6 +25,9 @@ val alts_of_profile : profile -> term list
 
 val permute_profile : term permutation -> profile -> profile
 
+val ranking : prefs -> term * term -> bool
+val strict_ranking : prefs -> term * term -> bool
+
 (* Lazy list of all permutations that, when applied to the first profile, yield one 
    anonymity-equivalent to the second profile *)
 val find_an_isomorphisms : profile * profile -> term permutation Seq.seq
@@ -42,22 +45,29 @@ val derive_orbit_equations : profile -> ((term * term) * term permutation) list
 (* The list of alternatives that are weakly preferred to the given alternative *)
 val preferred_alts : prefs -> term -> term list
 
-(* The list of Pareto-domination pairs (first element dominates second) *)
-val pareto_pairs : profile -> (term * term) list
+(* The list of Pareto-domination pairs (first element dominates second; strict preference
+   for the agent in the third component) *)
+val pareto_pairs : profile -> (term * term * term) list
 
 (* The set of all Pareto losers in a profile *)
-val pareto_losers : profile -> term list
+val pareto_losers : profile -> (term * term * term) list
 
 (* Construct the linear program that encodes SD inefficiency of the given support *)
 val mk_inefficiency_lp : profile -> support -> (string list * string * int) list
 
-(* Find a lottery that is strictly SD-preferred to the given support *)
-val find_inefficiency_witness : profile -> support -> lottery option
+(* Find a lottery that is strictly SD-preferred to the given support and the agent who
+   strictly prefers it. *)
+val find_inefficiency_witness : profile -> support -> (lottery * term) option
 
 (* Finds all non-singleton inefficient supports with a inefficiency certificate for each one.
    (non-singleton because singleton inefficient supports are simply Pareto losers *)
-val find_minimal_inefficient_supports : profile -> (support * lottery) list
+val find_minimal_inefficient_supports : profile -> (support * lottery * term) list
 
+(* Finds all ways for one voter to manipulate the first given profile to obtain a profile
+   that is equivalent to the second profile modulo anonymity and neutrality.
+   Returns a witness for each possible manipulation, consisting of the manipulating voter, 
+   her alternative preferences, and the permutation of alternatives.
+ *)
 val find_manipulations : profile * profile -> (term * prefs * term permutation) list
 
 end
@@ -83,6 +93,17 @@ fun equiv_profile_anonymity xy =
 val agents_of_profile = map fst
 val alts_of_profile = List.concat o snd o hd
 
+local
+  val mem = member op aconv
+in
+
+fun ranking [] _ = false
+  | ranking (xs :: xss) (x, y) = mem xs y orelse (not (mem xs x) andalso ranking xss (x, y))
+
+fun strict_ranking [] _ = false
+  | strict_ranking (xs :: xss) (x, y) = 
+      not (mem xs x) andalso (mem xs y orelse strict_ranking xss (x, y))
+end
 
 fun fixpoints eq xs = xs |> filter eq |> map fst
 
@@ -186,9 +207,11 @@ fun pareto_pairs p =
     |> List.concat
     |> filter_out_symmetric
     |> filter_out_trans
+    |> map (fn (x,y) => (x, y, find_first (fn (_, p) => strict_ranking p (y,x)) p |> the |> fst))
   end
 
-val pareto_losers = pareto_pairs #> map snd #> distinct op aconv
+val pareto_losers = 
+  pareto_pairs #> map (fn (a,b,c) => (b,a,c)) #> distinct (op aconv o apply2 #1)
 
 (* Poor man's Union-Find *)
 fun eqclasses eq carrier eqs = 
@@ -272,15 +295,26 @@ fun find_inefficiency_witness p lottery =
   let
     val alts = alts_of_profile p
     val lottery_vars = List.tabulate (length alts, fn x => "q" ^ Int.toString x);
+    val slack_vars = 
+      p ~~ List.tabulate (length p, Int.toString)
+      |> map (fn ((x,prefs),i) => 
+           (x, List.tabulate (length prefs - 1, fn j => "r" ^ i ^ "_" ^ Int.toString j)))
     fun the_default x NONE = x
       | the_default _ (SOME y) = y
 
     fun process_solution (diff, assignments) = 
-      if diff = MyRat.from_int 0 then 
-        NONE 
-      else 
-        SOME (alts ~~ map (the_default (MyRat.from_int 0) o AList.lookup op= assignments) 
-          lottery_vars)
+      let
+        val get_val = the_default (MyRat.from_int 0) o AList.lookup op= assignments
+        val i =
+          slack_vars 
+          |> find_first (snd #> exists (fn x => get_val x > MyRat.from_int 0)) 
+          |> Option.map fst
+      in 
+        if diff = MyRat.from_int 0 then 
+          NONE 
+        else 
+          Option.map (fn i => (alts ~~ map get_val lottery_vars, i)) i
+      end
   in 
     case solve_program (mk_inefficiency_lp_qsopt p lottery) of
       Optimal x => process_solution x
@@ -298,15 +332,15 @@ fun power_set xs =
 
 fun find_minimal_inefficient_supports p =
   let
-    val alts = subtract op aconv (pareto_losers p) (alts_of_profile p)
+    val alts = subtract op aconv (map #1 (pareto_losers p)) (alts_of_profile p)
     fun go supp acc =
       if List.null supp orelse
-            member (fn (a, b) => subset op aconv (fst b, a)) acc supp then
+            member (fn (a, b) => subset op aconv (#1 b, a)) acc supp then
         acc
       else 
         case find_inefficiency_witness p supp of
           NONE => acc
-        | SOME lott => (supp, lott) :: acc
+        | SOME (lott, i) => (supp, lott, i) :: acc
   in
     fold go (power_set alts) []
   end
