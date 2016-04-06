@@ -8,78 +8,77 @@ locale strategyproof_an_sds =
   for agents :: "'agent set" and alts :: "'alt set" and sds
 
 
-(* TODO: For testing only; can be removed *)
-datatype agents = A1 | A2 | A3 | A4
-datatype alts = a | b | c | d
-
-preference_profile 
-  agents: "{A1, A2, A3, A4}"
-  alts:   "{a, b, c, d}"
-where R1  = A1: [c, d], [a, b]    A2: [b, d], a, c      A3: a, b, [c, d]      A4: [a, c], [b, d]
-  and R2  = A1: [a, c], [b, d]    A2: [c, d], a, b      A3: [b, d], a, c      A4: a, b, [c, d]
-  and R3  = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: d, [a, b], c      A4: c, a, [b, d]
-  and R4  = A1: [a, b], [c, d]    A2: [a, d], [b, c]    A3: c, [a, b], d      A4: d, c, [a, b]
-  and R5  = A1: [c, d], [a, b]    A2: [a, b], [c, d]    A3: [a, c], d, b      A4: d, [a, b], c
-  and R6  = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: [a, c], [b, d]    A4: d, b, a, c
-  and R7  = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: a, c, d, b        A4: d, [a, b], c
-  and R8  = A1: [a, b], [c, d]    A2: [a, c], [b, d]    A3: d, [a, b], c      A4: d, c, [a, b]
-  and R9  = A1: [a, b], [c, d]    A2: [a, d], c, b      A3: d, c, [a, b]      A4: [a, b, c], d
-  and R10 = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: [a, c], d, b      A4: [b, d], a, c
-  and R11 = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: d, [a, b], c      A4: c, a, b, d
-  and R12 = A1: [c, d], [a, b]    A2: [a, b], [c, d]    A3: [a, c], d, b      A4: [a, b, d], c
-  and R13 = A1: [a, c], [b, d]    A2: [c, d], a, b      A3: [b, d], a, c      A4: a, b, d, c
-  and R14 = A1: [a, b], [c, d]    A2: d, c, [a, b]      A3: [a, b, c], d      A4: a, d, c, b
-  and R15 = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: [b, d], a, c      A4: a, c, d, b
-  and R16 = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: a, c, d, b        A4: [a, b, d], c
-  and R17 = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: [a, c], [b, d]    A4: d, [a, b], c
-  and R18 = A1: [a, b], [c, d]    A2: [a, d], [b, c]    A3: [a, b, c], d      A4: d, c, [a, b]
-  and R19 = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: [b, d], a, c      A4: [a, c], [b, d]
-  and R20 = A1: [b, d], a, c      A2: b, a, [c, d]      A3: a, c, [b, d]      A4: d, c, [a, b]
-  and R21 = A1: [a, d], c, b      A2: d, c, [a, b]      A3: c, [a, b], d      A4: a, b, [c, d]
-  and R22 = A1: [a, c], d, b      A2: d, c, [a, b]      A3: d, [a, b], c      A4: a, b, [c, d]
-  and R23 = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: [a, c], [b, d]    A4: [a, b, d], c
-  and R24 = A1: [c, d], [a, b]    A2: d, b, a, c        A3: c, a, [b, d]      A4: b, a, [c, d]
-  and R25 = A1: [c, d], [a, b]    A2: [b, d], a, c      A3: a, b, [c, d]      A4: a, c, [b, d]
-  and R26 = A1: [b, d], [a, c]    A2: [c, d], [a, b]    A3: a, b, [c, d]      A4: a, c, [b, d]
-  and R27 = A1: [a, b], [c, d]    A2: [b, d], a, c      A3: [a, c], [b, d]    A4: [c, d], a, b
-  and R28 = A1: [c, d], a, b      A2: [b, d], a, c      A3: a, b, [c, d]      A4: a, c, [b, d]
-  and R29 = A1: [a, c], d, b      A2: [b, d], a, c      A3: a, b, [c, d]      A4: d, c, [a, b]
-  and R30 = A1: [a, d], c, b      A2: d, c, [a, b]      A3: c, [a, b], d      A4: [a, b], d, c
-  and R31 = A1: [b, d], a, c      A2: [a, c], d, b      A3: c, d, [a, b]      A4: [a, b], c, d
-  and R32 = A1: [a, c], d, b      A2: d, c, [a, b]      A3: d, [a, b], c      A4: [a, b], d, c
-  and R33 = A1: [c, d], [a, b]    A2: [a, c], d, b      A3: a, b, [c, d]      A4: d, [a, b], c
-  and R34 = A1: [a, b], [c, d]    A2: a, c, d, b        A3: b, [a, d], c      A4: c, d, [a, b]
-  and R35 = A1: [a, d], c, b      A2: a, b, [c, d]      A3: [a, b, c], d      A4: d, c, [a, b]
-  and R36 = A1: [c, d], [a, b]    A2: [a, c], d, b      A3: [b, d], a, c      A4: a, b, [c, d]
-  and R37 = A1: [a, c], [b, d]    A2: [b, d], [a, c]    A3: a, b, [c, d]      A4: c, d, [a, b]
-  and R38 = A1: [c, d], a, b      A2: [b, d], a, c      A3: a, b, [c, d]      A4: [a, c], b, d
-  and R39 = A1: [a, c], d, b      A2: [b, d], a, c      A3: a, b, [c, d]      A4: [c, d], a, b
-  and R40 = A1: [a, d], c, b      A2: [a, b], c, d      A3: [a, b, c], d      A4: d, c, [a, b]
-  and R41 = A1: [a, d], c, b      A2: [a, b], d, c      A3: [a, b, c], d      A4: d, c, [a, b]
-  and R42 = A1: [c, d], [a, b]    A2: [a, b], [c, d]    A3: d, b, a, c        A4: c, a, [b, d]
-  and R43 = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: d, [a, b], c      A4: a, [c, d], b
-  and R44 = A1: [c, d], [a, b]    A2: [a, c], d, b      A3: [a, b], d, c      A4: [a, b, d], c
-  and R45 = A1: [a, c], d, b      A2: [b, d], a, c      A3: [a, b], c, d      A4: [c, d], b, a
-  and R46 = A1: [b, d], a, c      A2: d, c, [a, b]      A3: [a, c], [b, d]    A4: b, a, [c, d]
-  and R47 = A1: [a, b], [c, d]    A2: [a, d], c, b      A3: d, c, [a, b]      A4: c, [a, b], d
-  by simp_all
-
-(*
-preference_profile 
-  agents: "{A1, A2, A3, A4}"
-  alts:   "{a, b, c, d}"
-  where R1  = A1: [a,c], [b,d]     A2: [b,d], [a,c]     A3: [a,d], b, c     A4: [b,c], a, d
-    and R2  = A1: [a,c], [b,d]     A2: [b,d], [a,c]     A3: a, d, [b,c]     A4: b, c, [a, d]
-    and R3  = A1: [a,c], [b,d]     A2: [b,d], [a,c]     A3: [a,d], b, c     A4: d, c, a, b
-    and R4  = A1: [a,c], [b,d]     A2: [b,d], [a,c]     A3: [c,b], d, a     A4: b, a, c, d
-    and R5  = A1: [a,c,d], [b]     A2: [b,a], [c,d]     A3: [c,b], d, a     A4: b, a, [d,c]
-    and R6  = A1: [a,c], d, b      A2: [b,d], a, c      A3: [a,b], c, d     A4: [c, d], b, a
-by (simp_all add: insert_eq_iff)
-*)
-
-ML \<open>Preference_Profiles.derive_orbit_equations\<close>
+lemma disj_False_right: "P \<or> False \<longleftrightarrow> P" by simp
 
 lemmas multiset_add_ac = add_ac[where ?'a = "'a multiset"]
+
+lemma ex_post_efficient_aux:
+  assumes "prefs_from_table_wf agents alts xss" "R \<equiv> prefs_from_table xss"
+  assumes "i \<in> agents" "\<forall>i\<in>agents. y \<succeq>[prefs_from_table xss i] x" "\<not>y \<preceq>[prefs_from_table xss i] x"
+  shows   "ex_post_efficient_sds agents alts sds \<longrightarrow> pmf (sds R) x = 0"
+proof
+  assume ex_post: "ex_post_efficient_sds agents alts sds"
+  from assms(1,2) have wf: "pref_profile_wf agents alts R"
+    by (simp add: pref_profile_from_tableI')
+  from ex_post interpret ex_post_efficient_sds agents alts sds .
+  from assms(2-) show "pmf (sds R) x = 0"
+    by (intro ex_post_efficient''[OF wf, of i x y]) simp_all
+qed
+
+lemma SD_inefficient_support_aux:
+  assumes R: "prefs_from_table_wf agents alts xss" "R \<equiv> prefs_from_table xss"
+  assumes as: "as \<noteq> []" "set as \<subseteq> alts" "distinct as" "A = set as" 
+  assumes ys: "\<forall>x\<in>set (map snd ys). 0 \<le> x" "listsum (map snd ys) = 1" "set (map fst ys) \<subseteq> alts"
+  assumes i: "i \<in> agents"
+  assumes SD1: "\<forall>i\<in>agents. \<forall>x\<in>alts. 
+    listsum (map snd (filter (\<lambda>y. prefs_from_table xss i x (fst y)) ys)) \<ge>
+    real (length (filter (prefs_from_table xss i x) as)) / real (length as)"
+  assumes SD2: "\<exists>x\<in>alts. listsum (map snd (filter (\<lambda>y. prefs_from_table xss i x (fst y)) ys)) >
+                        real (length (filter (prefs_from_table xss i x) as)) / real (length as)"
+  shows   "sd_efficient_sds agents alts sds \<longrightarrow> (\<exists>x\<in>A. pmf (sds R) x = 0)"
+proof
+  assume "sd_efficient_sds agents alts sds"
+  from R have wf: "pref_profile_wf agents alts R" 
+    by (simp add: pref_profile_from_tableI')
+  then interpret pref_profile_wf agents alts R .
+  interpret sd_efficient_sds agents alts sds by fact
+  from ys have ys': "pmf_of_list_wf ys" by (intro pmf_of_list_wfI) auto
+  
+  {
+    fix i x assume "x \<in> alts" "i \<in> agents"
+    with ys' have "lottery_prob (pmf_of_list ys) (preferred_alts (R i) x) = 
+      listsum (map snd (filter (\<lambda>y. prefs_from_table xss i x (fst y)) ys))"
+      by (subst measure_pmf_of_list) (simp_all add: preferred_alts_def R)
+  } note A = this
+  {
+    fix i x assume "x \<in> alts" "i \<in> agents"
+    with as have "lottery_prob (pmf_of_set (set as)) (preferred_alts (R i) x) = 
+      real (card (set as \<inter> preferred_alts (R i) x)) / real (card (set as))"
+      by (subst measure_pmf_of_set) simp_all
+    also have "set as \<inter> preferred_alts (R i) x = set (filter (\<lambda>y. R i x y) as)"
+      by (auto simp add: preferred_alts_def)
+    also have "card \<dots> = length (filter (\<lambda>y. R i x y) as)"
+      by (intro distinct_card distinct_filter assms)
+    also have "card (set as) = length as" by (intro distinct_card assms)
+    finally have "lottery_prob (pmf_of_set (set as)) (preferred_alts (R i) x) =
+      real (length (filter (prefs_from_table xss i x) as)) / real (length as)"
+      by (simp add: R)
+  } note B = this
+
+  from wf show "\<exists>x\<in>A. pmf (sds R) x = 0"
+  proof (rule SD_inefficient_support')
+    from ys ys' show lottery1: "pmf_of_list ys \<in> lotteries" by (intro pmf_of_list_lottery)
+    show i: "i \<in> agents" by fact
+    from as have lottery2: "pmf_of_set (set as) \<in> lotteries"
+      by (intro pmf_of_set_lottery) simp_all
+    from i as SD2 lottery1 lottery2 show "\<not>SD (R i) (pmf_of_list ys) (pmf_of_set A)"
+      by (subst preorder_on.SD_preorder[of alts]) (auto simp: A B not_le)
+    from as SD1 lottery1 lottery2 
+      show "\<forall>i\<in>agents. SD (R i) (pmf_of_set A) (pmf_of_list ys)"
+        by safe (auto simp: preorder_on.SD_preorder[of alts] A B)
+  qed (insert as, simp_all)
+qed
+
 
 ML \<open>
 
@@ -172,25 +171,7 @@ val _ =
     "automatically derives the orbit equations for preference profiles"
     (Scan.repeat1 Parse.term >> derive_orbit_equations_cmd);
 
-\<close>
 
-
-lemma disj_False_right: "P \<or> False \<longleftrightarrow> P" by simp
-
-lemma ex_post_efficient_aux:
-  assumes "prefs_from_table_wf agents alts xss" "R \<equiv> prefs_from_table xss"
-  assumes "i \<in> agents" "\<forall>i\<in>agents. y \<succeq>[prefs_from_table xss i] x" "\<not>y \<preceq>[prefs_from_table xss i] x"
-  shows   "ex_post_efficient_sds agents alts sds \<longrightarrow> pmf (sds R) x = 0"
-proof
-  assume ex_post: "ex_post_efficient_sds agents alts sds"
-  from assms(1,2) have wf: "pref_profile_wf agents alts R"
-    by (simp add: pref_profile_from_tableI')
-  from ex_post interpret ex_post_efficient_sds agents alts sds .
-  from assms(2-) show "pmf (sds R) x = 0"
-    by (intro ex_post_efficient''[OF wf, of i x y]) simp_all
-qed
-
-ML \<open>
 
 fun prepare_ex_post_conditions sds (info : info) lthy =
   let
@@ -202,6 +183,28 @@ fun prepare_ex_post_conditions sds (info : info) lthy =
       |> Thm.instantiate' [] (map (SOME o cterm) [i, x, y, sds])
   in
     map prep losers
+  end
+
+fun prepare_sdeff_conditions sds (info : info) lthy =
+  let
+    val {raw = p, wf_raw_thm, def_thm, ...} = info
+    val altT = altT p
+    val supports = find_minimal_inefficient_supports p
+    val cterm = Thm.cterm_of lthy
+    fun prep (supp,lott,i) = 
+      let
+        val supp_list = HOLogic.mk_list altT supp
+        val supp_set = HOLogic.mk_set altT supp
+        val lott = 
+          lott
+          |> map (HOLogic.mk_prod o apsnd (MyRat.mk_rat_number @{typ Real.real}))
+          |> HOLogic.mk_list (HOLogic.mk_prodT (altT, @{typ Real.real}))
+      in
+        (@{thm SD_inefficient_support_aux} OF [wf_raw_thm, def_thm])
+        |> Thm.instantiate' [] (map (SOME o cterm) [supp_list, supp_set, lott, i, sds])
+    end
+  in
+    map prep supports
   end
 
 fun gen_derive_support_conditions providers ps lthy =
@@ -249,87 +252,6 @@ fun gen_derive_support_conditions providers ps lthy =
     |> Proof.refine_singleton before_proof
   end
 
-\<close>
-
-
-lemma SD_inefficient_support_aux:
-  assumes R: "prefs_from_table_wf agents alts xss" "R \<equiv> prefs_from_table xss"
-  assumes as: "as \<noteq> []" "set as \<subseteq> alts" "distinct as" "A = set as" 
-  assumes ys: "\<forall>x\<in>set (map snd ys). 0 \<le> x" "listsum (map snd ys) = 1" "set (map fst ys) \<subseteq> alts"
-  assumes i: "i \<in> agents"
-  assumes SD1: "\<forall>i\<in>agents. \<forall>x\<in>alts. 
-    listsum (map snd (filter (\<lambda>y. prefs_from_table xss i x (fst y)) ys)) \<ge>
-    real (length (filter (prefs_from_table xss i x) as)) / real (length as)"
-  assumes SD2: "\<exists>x\<in>alts. listsum (map snd (filter (\<lambda>y. prefs_from_table xss i x (fst y)) ys)) >
-                        real (length (filter (prefs_from_table xss i x) as)) / real (length as)"
-  shows   "sd_efficient_sds agents alts sds \<longrightarrow> (\<exists>x\<in>A. pmf (sds R) x = 0)"
-proof
-  assume "sd_efficient_sds agents alts sds"
-  from R have wf: "pref_profile_wf agents alts R" 
-    by (simp add: pref_profile_from_tableI')
-  then interpret pref_profile_wf agents alts R .
-  interpret sd_efficient_sds agents alts sds by fact
-  from ys have ys': "pmf_of_list_wf ys" by (intro pmf_of_list_wfI) auto
-  
-  {
-    fix i x assume "x \<in> alts" "i \<in> agents"
-    with ys' have "lottery_prob (pmf_of_list ys) (preferred_alts (R i) x) = 
-      listsum (map snd (filter (\<lambda>y. prefs_from_table xss i x (fst y)) ys))"
-      by (subst measure_pmf_of_list) (simp_all add: preferred_alts_def R)
-  } note A = this
-  {
-    fix i x assume "x \<in> alts" "i \<in> agents"
-    with as have "lottery_prob (pmf_of_set (set as)) (preferred_alts (R i) x) = 
-      real (card (set as \<inter> preferred_alts (R i) x)) / real (card (set as))"
-      by (subst measure_pmf_of_set) simp_all
-    also have "set as \<inter> preferred_alts (R i) x = set (filter (\<lambda>y. R i x y) as)"
-      by (auto simp add: preferred_alts_def)
-    also have "card \<dots> = length (filter (\<lambda>y. R i x y) as)"
-      by (intro distinct_card distinct_filter assms)
-    also have "card (set as) = length as" by (intro distinct_card assms)
-    finally have "lottery_prob (pmf_of_set (set as)) (preferred_alts (R i) x) =
-      real (length (filter (prefs_from_table xss i x) as)) / real (length as)"
-      by (simp add: R)
-  } note B = this
-
-  from wf show "\<exists>x\<in>A. pmf (sds R) x = 0"
-  proof (rule SD_inefficient_support')
-    from ys ys' show lottery1: "pmf_of_list ys \<in> lotteries" by (intro pmf_of_list_lottery)
-    show i: "i \<in> agents" by fact
-    from as have lottery2: "pmf_of_set (set as) \<in> lotteries"
-      by (intro pmf_of_set_lottery) simp_all
-    from i as SD2 lottery1 lottery2 show "\<not>SD (R i) (pmf_of_list ys) (pmf_of_set A)"
-      by (subst preorder_on.SD_preorder[of alts]) (auto simp: A B not_le)
-    from as SD1 lottery1 lottery2 
-      show "\<forall>i\<in>agents. SD (R i) (pmf_of_set A) (pmf_of_list ys)"
-        by safe (auto simp: preorder_on.SD_preorder[of alts] A B)
-  qed (insert as, simp_all)
-qed
-
-ML \<open>
-
-fun prepare_sdeff_conditions sds (info : info) lthy =
-  let
-    val {raw = p, wf_raw_thm, def_thm, ...} = info
-    val altT = altT p
-    val supports = find_minimal_inefficient_supports p
-    val cterm = Thm.cterm_of lthy
-    fun prep (supp,lott,i) = 
-      let
-        val supp_list = HOLogic.mk_list altT supp
-        val supp_set = HOLogic.mk_set altT supp
-        val lott = 
-          lott
-          |> map (HOLogic.mk_prod o apsnd (MyRat.mk_rat_number @{typ Real.real}))
-          |> HOLogic.mk_list (HOLogic.mk_prodT (altT, @{typ Real.real}))
-      in
-        (@{thm SD_inefficient_support_aux} OF [wf_raw_thm, def_thm])
-        |> Thm.instantiate' [] (map (SOME o cterm) [supp_list, supp_set, lott, i, sds])
-    end
-  in
-    map prep supports
-  end
-
 fun gen_derive_support_conditions_cmd providers ts lthy = 
   gen_derive_support_conditions providers (map (Syntax.read_term lthy) ts) lthy
 
@@ -343,28 +265,92 @@ val _ =
 
 \<close>
 
+
+
+(* TODO: For testing only; can be removed *)
+datatype agents = A1 | A2 | A3 | A4
+datatype alts = a | b | c | d
+
+preference_profile 
+  agents: "{A1, A2, A3, A4}"
+  alts:   "{a, b, c, d}"
+where R1  = A1: [c, d], [a, b]    A2: [b, d], a, c      A3: a, b, [c, d]      A4: [a, c], [b, d]
+  and R2  = A1: [a, c], [b, d]    A2: [c, d], a, b      A3: [b, d], a, c      A4: a, b, [c, d]
+  and R3  = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: d, [a, b], c      A4: c, a, [b, d]
+  and R4  = A1: [a, b], [c, d]    A2: [a, d], [b, c]    A3: c, [a, b], d      A4: d, c, [a, b]
+  and R5  = A1: [c, d], [a, b]    A2: [a, b], [c, d]    A3: [a, c], d, b      A4: d, [a, b], c
+  and R6  = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: [a, c], [b, d]    A4: d, b, a, c
+  and R7  = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: a, c, d, b        A4: d, [a, b], c
+  and R8  = A1: [a, b], [c, d]    A2: [a, c], [b, d]    A3: d, [a, b], c      A4: d, c, [a, b]
+  and R9  = A1: [a, b], [c, d]    A2: [a, d], c, b      A3: d, c, [a, b]      A4: [a, b, c], d
+  and R10 = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: [a, c], d, b      A4: [b, d], a, c
+  and R11 = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: d, [a, b], c      A4: c, a, b, d
+  and R12 = A1: [c, d], [a, b]    A2: [a, b], [c, d]    A3: [a, c], d, b      A4: [a, b, d], c
+  and R13 = A1: [a, c], [b, d]    A2: [c, d], a, b      A3: [b, d], a, c      A4: a, b, d, c
+  and R14 = A1: [a, b], [c, d]    A2: d, c, [a, b]      A3: [a, b, c], d      A4: a, d, c, b
+  and R15 = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: [b, d], a, c      A4: a, c, d, b
+  and R16 = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: a, c, d, b        A4: [a, b, d], c
+  and R17 = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: [a, c], [b, d]    A4: d, [a, b], c
+  and R18 = A1: [a, b], [c, d]    A2: [a, d], [b, c]    A3: [a, b, c], d      A4: d, c, [a, b]
+  and R19 = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: [b, d], a, c      A4: [a, c], [b, d]
+  and R20 = A1: [b, d], a, c      A2: b, a, [c, d]      A3: a, c, [b, d]      A4: d, c, [a, b]
+  and R21 = A1: [a, d], c, b      A2: d, c, [a, b]      A3: c, [a, b], d      A4: a, b, [c, d]
+  and R22 = A1: [a, c], d, b      A2: d, c, [a, b]      A3: d, [a, b], c      A4: a, b, [c, d]
+  and R23 = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: [a, c], [b, d]    A4: [a, b, d], c
+  and R24 = A1: [c, d], [a, b]    A2: d, b, a, c        A3: c, a, [b, d]      A4: b, a, [c, d]
+  and R25 = A1: [c, d], [a, b]    A2: [b, d], a, c      A3: a, b, [c, d]      A4: a, c, [b, d]
+  and R26 = A1: [b, d], [a, c]    A2: [c, d], [a, b]    A3: a, b, [c, d]      A4: a, c, [b, d]
+  and R27 = A1: [a, b], [c, d]    A2: [b, d], a, c      A3: [a, c], [b, d]    A4: [c, d], a, b
+  and R28 = A1: [c, d], a, b      A2: [b, d], a, c      A3: a, b, [c, d]      A4: a, c, [b, d]
+  and R29 = A1: [a, c], d, b      A2: [b, d], a, c      A3: a, b, [c, d]      A4: d, c, [a, b]
+  and R30 = A1: [a, d], c, b      A2: d, c, [a, b]      A3: c, [a, b], d      A4: [a, b], d, c
+  and R31 = A1: [b, d], a, c      A2: [a, c], d, b      A3: c, d, [a, b]      A4: [a, b], c, d
+  and R32 = A1: [a, c], d, b      A2: d, c, [a, b]      A3: d, [a, b], c      A4: [a, b], d, c
+  and R33 = A1: [c, d], [a, b]    A2: [a, c], d, b      A3: a, b, [c, d]      A4: d, [a, b], c
+  and R34 = A1: [a, b], [c, d]    A2: a, c, d, b        A3: b, [a, d], c      A4: c, d, [a, b]
+  and R35 = A1: [a, d], c, b      A2: a, b, [c, d]      A3: [a, b, c], d      A4: d, c, [a, b]
+  and R36 = A1: [c, d], [a, b]    A2: [a, c], d, b      A3: [b, d], a, c      A4: a, b, [c, d]
+  and R37 = A1: [a, c], [b, d]    A2: [b, d], [a, c]    A3: a, b, [c, d]      A4: c, d, [a, b]
+  and R38 = A1: [c, d], a, b      A2: [b, d], a, c      A3: a, b, [c, d]      A4: [a, c], b, d
+  and R39 = A1: [a, c], d, b      A2: [b, d], a, c      A3: a, b, [c, d]      A4: [c, d], a, b
+  and R40 = A1: [a, d], c, b      A2: [a, b], c, d      A3: [a, b, c], d      A4: d, c, [a, b]
+  and R41 = A1: [a, d], c, b      A2: [a, b], d, c      A3: [a, b, c], d      A4: d, c, [a, b]
+  and R42 = A1: [c, d], [a, b]    A2: [a, b], [c, d]    A3: d, b, a, c        A4: c, a, [b, d]
+  and R43 = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: d, [a, b], c      A4: a, [c, d], b
+  and R44 = A1: [c, d], [a, b]    A2: [a, c], d, b      A3: [a, b], d, c      A4: [a, b, d], c
+  and R45 = A1: [a, c], d, b      A2: [b, d], a, c      A3: [a, b], c, d      A4: [c, d], b, a
+  and R46 = A1: [b, d], a, c      A2: d, c, [a, b]      A3: [a, c], [b, d]    A4: b, a, [c, d]
+  and R47 = A1: [a, b], [c, d]    A2: [a, d], c, b      A3: d, c, [a, b]      A4: c, [a, b], d
+  by simp_all
+
+
+derive_orbit_equations
+  R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15 R16 R17 R18 R19 R20
+  R21 R22 R23 R24 R25 R26 R27 R28 R29 R30 R31 R32 R33 R34 R35 R36 R37 R38 R39 R40
+  R41 R42 R43 R44 R45 R46 R47
+  by simp_all
+
 derive_support_conditions 
   R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15 R16 R17 R18 R19 R20
   R21 R22 R23 R24 R25 R26 R27 R28 R29 R30 R31 R32 R33 R34 R35 R36 R37 R38 R39 R40
   R41 R42 R43 R44 R45 R46 R47
   by simp_all
 
-thm R19.support
-
-
-consts sds :: "(agents, alts) pref_profile \<Rightarrow> alts lottery"
-
-axiomatization where sd_eff: "sd_efficient_sds {A1,A2,A3,A4} {a,b,c,d} sds"
 
 
 
-
-
-lemma
-  assumes "sd_efficient_sds {A1,A2,A3,A4} {a,b,c,d} sds"
-  shows   "\<exists>x\<in>{c,d}. pmf (sds R1) x = 0"
-  by (rule SD_inefficient_support_aux[OF R1_wf_raw R1_def sd_eff, of "[c,d]" "{c,d}" "[(a, 1/2), (b, 1/2)]" A3])
-     simp_all
+(*
+preference_profile 
+  agents: "{A1, A2, A3, A4}"
+  alts:   "{a, b, c, d}"
+  where R1  = A1: [a,c], [b,d]     A2: [b,d], [a,c]     A3: [a,d], b, c     A4: [b,c], a, d
+    and R2  = A1: [a,c], [b,d]     A2: [b,d], [a,c]     A3: a, d, [b,c]     A4: b, c, [a, d]
+    and R3  = A1: [a,c], [b,d]     A2: [b,d], [a,c]     A3: [a,d], b, c     A4: d, c, a, b
+    and R4  = A1: [a,c], [b,d]     A2: [b,d], [a,c]     A3: [c,b], d, a     A4: b, a, c, d
+    and R5  = A1: [a,c,d], [b]     A2: [b,a], [c,d]     A3: [c,b], d, a     A4: b, a, [d,c]
+    and R6  = A1: [a,c], d, b      A2: [b,d], a, c      A3: [a,b], c, d     A4: [c, d], b, a
+by (simp_all add: insert_eq_iff)
+*)
 
 (*
 ML_val \<open>
@@ -392,3 +378,5 @@ ML_val \<open>
   end
   
 \<close>*)
+
+end
