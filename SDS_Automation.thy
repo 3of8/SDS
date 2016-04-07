@@ -80,6 +80,109 @@ proof
 qed
 
 
+
+definition pref_classes where
+  "pref_classes alts le = preferred_alts le ` alts - {alts}"
+
+primrec pref_classes_lists where
+  "pref_classes_lists [] = {}"
+| "pref_classes_lists (xs#xss) = insert (\<Union>(set (xs#xss))) (pref_classes_lists xss)"
+
+lemma pref_classes_of_weak_ranking:
+  assumes "\<Union>(set xss) = alts" "is_weak_ranking xss"
+  shows   "pref_classes alts (of_weak_ranking xss) = pref_classes_lists (rev xss)"
+proof -
+  from assms(2) 
+    have "of_weak_ranking_Collect_ge xss ` (\<Union>(set xss)) = pref_classes_lists xss"
+apply (induction xss)
+apply simp
+unfolding is_weak_ranking_Cons of_weak_ranking_Collect_ge_Cons' pref_classes_lists.simps
+apply (auto simp: split: if_splits)
+apply blast
+done
+
+context preorder_on
+begin
+
+lemma preferred_alts_subset: "preferred_alts le x \<subseteq> carrier"
+  unfolding preferred_alts_def using not_outside by blast
+
+lemma SD_iff_pref_classes:
+  assumes "p \<in> lotteries_on carrier" "q \<in> lotteries_on carrier"
+  shows   "p \<preceq>[SD(le)] q \<longleftrightarrow> 
+             (\<forall>A\<in>pref_classes carrier le. measure_pmf.prob p A \<le> measure_pmf.prob q A)"
+proof safe
+  fix A assume "p \<preceq>[SD(le)] q" "A \<in> pref_classes carrier le"
+  thus "measure_pmf.prob p A \<le> measure_pmf.prob q A"
+    by (auto simp: SD_preorder pref_classes_def)
+next
+  assume A: "\<forall>A\<in>pref_classes carrier le. measure_pmf.prob p A \<le> measure_pmf.prob q A"
+  show "p \<preceq>[SD(le)] q"
+  proof (rule SD_preorderI)
+    fix x assume x: "x \<in> carrier"
+    show "measure_pmf.prob p (preferred_alts le x)
+             \<le> measure_pmf.prob q (preferred_alts le x)"
+    proof (cases "preferred_alts le x = carrier")
+      case False
+      with x have "preferred_alts le x \<in> pref_classes carrier le"
+        unfolding pref_classes_def by (intro DiffI imageI) simp_all
+      with A show ?thesis by simp
+    next
+      case True
+      from assms have "measure_pmf.prob p carrier = 1" "measure_pmf.prob q carrier = 1"
+        by (auto simp: measure_pmf.prob_eq_1 lotteries_on_def AE_measure_pmf_iff)
+      with True show ?thesis by simp
+    qed
+  qed (insert assms, simp_all)
+qed
+
+lemma (in strategyproof_an_sds) strategyproof':
+  assumes wf: "is_pref_profile R" "complete_preorder_on alts Ri'" and i: "i \<in> agents"
+  shows   "(\<exists>A\<in>pref_classes alts (R i). lottery_prob (sds (R(i := Ri'))) A <
+                        lottery_prob (sds R) A) \<or>
+           (\<forall>A\<in>pref_classes alts (R i). lottery_prob (sds (R(i := Ri'))) A =
+                        lottery_prob (sds R) A)"
+proof -
+  from wf(1) interpret R: pref_profile_wf agents alts R .
+  from i interpret complete_preorder_on alts "R i" by simp
+  from assms have "\<not> manipulable_profile R i Ri'" by (intro strategyproof)
+  moreover from wf i have "sds R \<in> lotteries" "sds (R(i := Ri')) \<in> lotteries"
+    by (simp_all add: sds_wf)
+  ultimately show ?thesis
+    by (fastforce simp: manipulable_profile_def strongly_preferred_def
+                        SD_iff_pref_classes not_le not_less)
+qed
+
+lemma strategyproof_aux:
+  assumes wf: "prefs_from_table_wf agents alts xss1" "R1 = prefs_from_table xss1"
+              "prefs_from_table_wf agents alts xss2" "R2 = prefs_from_table xss2"
+  assumes sds: "strategyproof_an_sds agents alts sds" and i: "i \<in> agents" and j: "j \<in> agents"
+  assumes eq:  "R1(i := R2 j) = R2"
+  shows P
+proof -
+  from sds interpret strategyproof_an_sds agents alts sds .
+  let ?Ri' = "R2 j"
+  from wf j have wf': "is_pref_profile R1" "complete_preorder_on alts ?Ri'"
+    by (auto intro: pref_profile_from_tableI pref_profile_wf.prefs_wf'(1))
+
+  from strategyproof'[OF wf' i] eq have
+    "(\<exists>A\<in>pref_classes alts (R1 i). lottery_prob (sds R2) A < lottery_prob (sds R1) A) \<or>
+     (\<forall>A\<in>pref_classes alts (R1 i). lottery_prob (sds R2) A = lottery_prob (sds R1) A)"
+    by simp
+   
+
+  let ?R' = "R(i := Ri')" and ?P = "\<lambda>S x. lottery_prob (sds S) (preferred_alts (R i) x)"
+  from wf(1) interpret R: pref_profile_wf agents alts R .
+  from i interpret complete_preorder_on alts "R i" by simp
+  from assms have "\<not> manipulable_profile R i Ri'" by (intro strategyproof)
+  moreover from wf i have "sds R \<in> lotteries" "sds (R(i := Ri')) \<in> lotteries"
+    by (simp_all add: sds_wf)
+  ultimately show ?thesis
+    by (force simp: manipulable_profile_def strongly_preferred_def SD_preorder not_le not_less)
+qed
+
+
+
 ML \<open>
 
 open Preference_Profiles
@@ -264,7 +367,6 @@ val _ =
     (Scan.repeat1 Parse.term >> derive_support_conditions_cmd);
 
 \<close>
-
 
 
 (* TODO: For testing only; can be removed *)

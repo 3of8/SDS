@@ -656,6 +656,11 @@ lemma of_weak_ranking_Collect_ge_Cons [simp]:
   "y \<notin> x \<Longrightarrow> of_weak_ranking_Collect_ge (x#xs) y = of_weak_ranking_Collect_ge xs y"
   by (auto simp: of_weak_ranking_Cons of_weak_ranking_Collect_ge_def)
 
+lemma of_weak_ranking_Collect_ge_Cons':
+  "of_weak_ranking_Collect_ge (x#xs) = (\<lambda>y.
+     (if y \<in> x then (\<Union>set (x#xs)) else of_weak_ranking_Collect_ge xs y))"
+  by (auto simp: of_weak_ranking_Cons of_weak_ranking_Collect_ge_def fun_eq_iff)
+
 (* TODO Move *)
 lemma mset_set_set: "distinct xs \<Longrightarrow> mset_set (set xs) = mset xs"
   by (induction xs) (simp_all add: add_ac)
