@@ -9,6 +9,7 @@ type 'a permutation
 
 
 val apply_permutation : ('a * 'a -> bool) -> 'a permutation -> 'a -> 'a
+val apply_reverse_permutation : ('a * 'a -> bool) -> 'a permutation -> 'a -> 'a
 val is_identity : ('a * 'a -> bool) -> 'a permutation -> bool
 val fixpoints : ('a * 'a -> bool) -> 'a permutation -> 'a list
 val permutations : ('a * 'a -> bool) -> 'a list -> 'a permutation Seq.seq
@@ -113,6 +114,10 @@ fun fixpoints eq xs = xs |> filter eq |> map fst
 
 fun apply_permutation _ [] x = x
   | apply_permutation eq ((x,y)::p) x' = if eq (x,x') then y else apply_permutation eq p x'
+
+fun apply_reverse_permutation _ [] x = x
+  | apply_reverse_permutation eq ((y,x)::p) x' = 
+      if eq (x,x') then y else apply_reverse_permutation eq p x'
 
 val is_identity = forall
 
@@ -371,7 +376,7 @@ fun find_manipulations (p1, p2) =
       p2 |> bind' (fn (_, prefs) =>
         Seq.of_list (manipulations (permute_profile p p1) prefs)
         |> Seq.filter (fn (_, _, p1') => equiv_profile_anonymity (p1', p2))
-        |> Seq.map (fn (a, b, _) => (a, b, p))))
+        |> Seq.map (fn (a, b, _) => (a, map (map (apply_reverse_permutation op aconv p)) b, p))))
     |> Seq.list_of
   end
 

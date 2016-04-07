@@ -88,22 +88,117 @@ primrec pref_classes_lists where
   "pref_classes_lists [] = {}"
 | "pref_classes_lists (xs#xss) = insert (\<Union>(set (xs#xss))) (pref_classes_lists xss)"
 
-lemma pref_classes_of_weak_ranking:
-  assumes "\<Union>(set xss) = alts" "is_weak_ranking xss"
-  shows   "pref_classes alts (of_weak_ranking xss) = pref_classes_lists (rev xss)"
+fun pref_classes_lists_aux where
+  "pref_classes_lists_aux acc [] = {}"
+| "pref_classes_lists_aux acc (xs#xss) = insert acc (pref_classes_lists_aux (acc \<union> xs) xss)"
+
+lemma pref_classes_lists_append: 
+  "pref_classes_lists (xs @ ys) = (op \<union> (\<Union>set ys)) ` pref_classes_lists xs \<union> pref_classes_lists ys"
+  by (induction xs) auto
+
+lemma pref_classes_lists_aux:
+  assumes "is_weak_ranking xss" "acc \<inter> (\<Union>set xss) = {}"
+  shows  "pref_classes_lists_aux acc xss = 
+            (insert acc ((\<lambda>A. A \<union> acc) ` pref_classes_lists (rev xss)) - {acc \<union> \<Union>(set xss)})"
+using assms
+proof (induction acc xss rule: pref_classes_lists_aux.induct [case_names Nil Cons]) 
+  case (Cons acc xs xss)
+  from Cons.prems have A: "acc \<inter> (xs \<union> \<Union>set xss) = {}" "xs \<noteq> {}" 
+    by (simp_all add: is_weak_ranking_Cons)
+  from Cons.prems have "pref_classes_lists_aux (acc \<union> xs) xss =
+                          insert (acc \<union> xs) ((\<lambda>A. A \<union> (acc \<union> xs)) `pref_classes_lists (rev xss)) -
+                          {acc \<union> xs \<union> \<Union>set xss}"
+    by (intro Cons.IH) (auto simp: is_weak_ranking_Cons)
+  with Cons.prems have "pref_classes_lists_aux acc (xs # xss) = 
+      insert acc (insert (acc \<union> xs) ((\<lambda>A. A \<union> (acc \<union> xs)) ` pref_classes_lists (rev xss)) -
+         {acc \<union> (xs \<union> \<Union>set xss)})"
+    by (simp_all add: is_weak_ranking_Cons pref_classes_lists_append image_image Un_ac)
+  also from  A have "\<dots> = insert acc (insert (acc \<union> xs) ((\<lambda>x. x \<union> (acc \<union> xs)) ` 
+                            pref_classes_lists (rev xss))) - {acc \<union> (xs \<union> \<Union>set xss)}" 
+    by blast
+  finally show ?case
+    by (simp_all add: pref_classes_lists_append image_image Un_ac)
+qed simp_all
+
+lemma pref_classes_list_aux_hd_tl:
+  assumes "is_weak_ranking xss" "xss \<noteq> []"
+  shows   "pref_classes_lists_aux (hd xss) (tl xss) = pref_classes_lists (rev xss) - {\<Union>set xss}"
 proof -
-  from assms(2) 
-    have "of_weak_ranking_Collect_ge xss ` (\<Union>(set xss)) = pref_classes_lists xss"
-apply (induction xss)
-apply simp
-unfolding is_weak_ranking_Cons of_weak_ranking_Collect_ge_Cons' pref_classes_lists.simps
-apply (auto simp: split: if_splits)
-apply blast
-done
+  from assms have A: "xss = hd xss # tl xss" by simp
+  from assms have "hd xss \<inter> \<Union>set (tl xss) = {} \<and> is_weak_ranking (tl xss)"
+    by (subst (asm) A, subst (asm) is_weak_ranking_Cons) simp_all
+  hence "pref_classes_lists_aux (hd xss) (tl xss) = 
+           insert (hd xss) ((\<lambda>A. A \<union> hd xss) ` pref_classes_lists (rev (tl xss))) -
+           {hd xss \<union> \<Union>set (tl xss)}" by (intro pref_classes_lists_aux) simp_all
+  also have "hd xss \<union> \<Union>set (tl xss) = \<Union>(set xss)" by (subst (3) A, subst set_simps) simp_all
+  also have "insert (hd xss) ((\<lambda>A. A \<union> hd xss) ` pref_classes_lists (rev (tl xss))) =
+               pref_classes_lists (rev (tl xss) @ [hd xss])"
+    by (subst pref_classes_lists_append) auto
+  also have "rev (tl xss) @ [hd xss] = rev xss" by (subst (3) A) (simp only: rev.simps)
+  finally show ?thesis .
+qed
+
+lemma pref_classes_of_weak_ranking_aux:
+  assumes "is_weak_ranking xss"
+  shows   "of_weak_ranking_Collect_ge xss ` (\<Union>(set xss)) = pref_classes_lists xss"
+proof safe
+  fix X x assume "x \<in> X" "X \<in> set xss"
+  with assms show "of_weak_ranking_Collect_ge xss x \<in> pref_classes_lists xss"
+    by (induction xss) (auto simp: is_weak_ranking_Cons of_weak_ranking_Collect_ge_Cons')
+next
+  fix x assume "x \<in> pref_classes_lists xss"
+  with assms show "x \<in> of_weak_ranking_Collect_ge xss ` \<Union>set xss"
+  proof (induction xss)
+    case (Cons xs xss)
+    from Cons.prems consider "x = xs \<union> \<Union>set xss" | "x \<in> pref_classes_lists xss" by auto
+    thus ?case
+    proof cases
+      assume "x = xs \<union> \<Union>set xss"
+      with Cons.prems show ?thesis
+        by (auto simp: is_weak_ranking_Cons of_weak_ranking_Collect_ge_Cons')
+    next
+      assume x: "x \<in> pref_classes_lists xss"
+      from Cons.prems x have "x \<in> of_weak_ranking_Collect_ge xss ` \<Union>set xss"
+        by (intro Cons.IH) (simp_all add: is_weak_ranking_Cons)
+      moreover from Cons.prems have "xs \<inter> \<Union>set xss = {}"
+        by (simp add: is_weak_ranking_Cons)
+      ultimately have "x \<in> of_weak_ranking_Collect_ge xss `
+                         ((xs \<union> \<Union>set xss) \<inter> {x. x \<notin> xs})" by blast
+      thus ?thesis by (simp add: of_weak_ranking_Collect_ge_Cons')
+    qed
+  qed simp_all
+qed
+
+(* TODO: Move *)
+lemma is_weak_ranking_rev [simp]: "is_weak_ranking (rev xs) \<longleftrightarrow> is_weak_ranking xs"
+  by (simp add: is_weak_ranking_iff)
+
+lemma eval_pref_classes_of_weak_ranking:
+  assumes "\<Union>(set xss) = alts" "is_weak_ranking xss" "alts \<noteq> {}"
+  shows   "pref_classes alts (of_weak_ranking xss) = pref_classes_lists_aux (hd xss) (tl xss)"
+proof -
+  have "pref_classes alts (of_weak_ranking xss) = 
+               preferred_alts (of_weak_ranking xss) ` (\<Union>(set (rev xss))) - {\<Union>set xss}"
+    by (simp add: pref_classes_def assms)
+  also {
+    have "of_weak_ranking_Collect_ge (rev xss) ` (\<Union>(set (rev xss))) = pref_classes_lists (rev xss)"
+      using assms by (intro pref_classes_of_weak_ranking_aux) simp_all
+    also have "of_weak_ranking_Collect_ge (rev xss) = preferred_alts (of_weak_ranking xss)"
+      by (intro ext) (simp_all add: of_weak_ranking_Collect_ge_def preferred_alts_def)
+    finally have "preferred_alts (of_weak_ranking xss) ` (\<Union>(set (rev xss))) = 
+                    pref_classes_lists (rev xss)" .
+  }
+  also from assms have "pref_classes_lists (rev xss) - {\<Union>set xss} = 
+                          pref_classes_lists_aux (hd xss) (tl xss)"
+    by (intro pref_classes_list_aux_hd_tl [symmetric]) auto
+  finally show ?thesis by simp
+qed
+
 
 context preorder_on
 begin
 
+(* TODO: Move *)
 lemma preferred_alts_subset: "preferred_alts le x \<subseteq> carrier"
   unfolding preferred_alts_def using not_outside by blast
 
@@ -153,32 +248,89 @@ proof -
                         SD_iff_pref_classes not_le not_less)
 qed
 
+lemma pref_classes_lists_aux_finite: 
+  "A \<in> pref_classes_lists_aux acc xss \<Longrightarrow> finite acc \<Longrightarrow> (\<And>A. A \<in> set xss \<Longrightarrow> finite A)
+      \<Longrightarrow> finite A"
+  by (induction acc xss rule: pref_classes_lists_aux.induct) auto
+
 lemma strategyproof_aux:
   assumes wf: "prefs_from_table_wf agents alts xss1" "R1 = prefs_from_table xss1"
               "prefs_from_table_wf agents alts xss2" "R2 = prefs_from_table xss2"
   assumes sds: "strategyproof_an_sds agents alts sds" and i: "i \<in> agents" and j: "j \<in> agents"
-  assumes eq:  "R1(i := R2 j) = R2"
-  shows P
+  assumes eq:  "R1(i := R2 j) = R2" "the (map_of xss1 i) = xs" 
+               "pref_classes_lists_aux (hd xs) (tl xs) = ps"
+  shows   "(\<exists>A\<in>ps. (\<Sum>x\<in>A. pmf (sds R2) x) < (\<Sum>x\<in>A. pmf (sds R1) x)) \<or>
+           (\<forall>A\<in>ps. (\<Sum>x\<in>A. pmf (sds R2) x) = (\<Sum>x\<in>A. pmf (sds R1) x))"
 proof -
   from sds interpret strategyproof_an_sds agents alts sds .
   let ?Ri' = "R2 j"
   from wf j have wf': "is_pref_profile R1" "complete_preorder_on alts ?Ri'"
     by (auto intro: pref_profile_from_tableI pref_profile_wf.prefs_wf'(1))
 
+  from wf(1) i have "i \<in> set (map fst xss1)" by (simp add: prefs_from_table_wf_def)
+  with prefs_from_table_wfD(3)[OF wf(1)] eq
+    have "xs \<in> set (map snd xss1)" by force
+  note xs = prefs_from_table_wfD(2)[OF wf(1)] prefs_from_table_wfD(5,6)[OF wf(1) this]
+
+  {
+    fix p A assume A: "A \<in> pref_classes_lists_aux (hd xs) (tl xs)"
+    from xs have "xs \<noteq> []" by auto
+    with xs have "finite A"
+      by (intro pref_classes_lists_aux_finite[OF A])
+         (auto simp: is_finite_weak_ranking_def list.set_sel)
+    hence "lottery_prob p A = (\<Sum>x\<in>A. pmf p x)"
+      by (rule measure_measure_pmf_finite)
+  } note A = this
+
   from strategyproof'[OF wf' i] eq have
     "(\<exists>A\<in>pref_classes alts (R1 i). lottery_prob (sds R2) A < lottery_prob (sds R1) A) \<or>
      (\<forall>A\<in>pref_classes alts (R1 i). lottery_prob (sds R2) A = lottery_prob (sds R1) A)"
     by simp
-   
+  also from wf eq i have "R1 i = of_weak_ranking xs"
+    by (simp add: prefs_from_table_map_of)
+  also from xs have "pref_classes alts (of_weak_ranking xs) = pref_classes_lists_aux (hd xs) (tl xs)"
+    unfolding is_finite_weak_ranking_def by (intro eval_pref_classes_of_weak_ranking) simp_all
+  finally show ?thesis by (simp add: A eq)
+qed
 
-  let ?R' = "R(i := Ri')" and ?P = "\<lambda>S x. lottery_prob (sds S) (preferred_alts (R i) x)"
-  from wf(1) interpret R: pref_profile_wf agents alts R .
-  from i interpret complete_preorder_on alts "R i" by simp
-  from assms have "\<not> manipulable_profile R i Ri'" by (intro strategyproof)
-  moreover from wf i have "sds R \<in> lotteries" "sds (R(i := Ri')) \<in> lotteries"
-    by (simp_all add: sds_wf)
-  ultimately show ?thesis
-    by (force simp: manipulable_profile_def strongly_preferred_def SD_preorder not_le not_less)
+lemma strategyproof_aux':
+  assumes wf: "prefs_from_table_wf agents alts xss1" "R1 = prefs_from_table xss1"
+              "prefs_from_table_wf agents alts xss2" "R2 = prefs_from_table xss2"
+  assumes sds: "strategyproof_an_sds agents alts sds" and i: "i \<in> agents" and j: "j \<in> agents"
+  assumes eq:  "R1(i := R2 j) = R2" "the (map_of xss1 i) = xs" 
+               "pref_classes_lists_aux (hd xs) (tl xs) = ps"
+  shows   "(\<exists>A\<in>ps. (\<Sum>x\<in>A. pmf (sds R2) x) < (\<Sum>x\<in>A. pmf (sds R1) x)) \<or>
+           (\<forall>A\<in>ps. (\<Sum>x\<in>A. pmf (sds R2) x) = (\<Sum>x\<in>A. pmf (sds R1) x))"
+proof -
+  from sds interpret strategyproof_an_sds agents alts sds .
+  let ?Ri' = "R2 j"
+  from wf j have wf': "is_pref_profile R1" "complete_preorder_on alts ?Ri'"
+    by (auto intro: pref_profile_from_tableI pref_profile_wf.prefs_wf'(1))
+
+  from wf(1) i have "i \<in> set (map fst xss1)" by (simp add: prefs_from_table_wf_def)
+  with prefs_from_table_wfD(3)[OF wf(1)] eq
+    have "xs \<in> set (map snd xss1)" by force
+  note xs = prefs_from_table_wfD(2)[OF wf(1)] prefs_from_table_wfD(5,6)[OF wf(1) this]
+
+  {
+    fix p A assume A: "A \<in> pref_classes_lists_aux (hd xs) (tl xs)"
+    from xs have "xs \<noteq> []" by auto
+    with xs have "finite A"
+      by (intro pref_classes_lists_aux_finite[OF A])
+         (auto simp: is_finite_weak_ranking_def list.set_sel)
+    hence "lottery_prob p A = (\<Sum>x\<in>A. pmf p x)"
+      by (rule measure_measure_pmf_finite)
+  } note A = this
+
+  from strategyproof'[OF wf' i] eq have
+    "(\<exists>A\<in>pref_classes alts (R1 i). lottery_prob (sds R2) A < lottery_prob (sds R1) A) \<or>
+     (\<forall>A\<in>pref_classes alts (R1 i). lottery_prob (sds R2) A = lottery_prob (sds R1) A)"
+    by simp
+  also from wf eq i have "R1 i = of_weak_ranking xs"
+    by (simp add: prefs_from_table_map_of)
+  also from xs have "pref_classes alts (of_weak_ranking xs) = pref_classes_lists_aux (hd xs) (tl xs)"
+    unfolding is_finite_weak_ranking_def by (intro eval_pref_classes_of_weak_ranking) simp_all
+  finally show ?thesis by (simp add: A eq)
 qed
 
 
@@ -424,6 +576,22 @@ where R1  = A1: [c, d], [a, b]    A2: [b, d], a, c      A3: a, b, [c, d]      A4
   and R46 = A1: [b, d], a, c      A2: d, c, [a, b]      A3: [a, c], [b, d]    A4: b, a, [c, d]
   and R47 = A1: [a, b], [c, d]    A2: [a, d], c, b      A3: d, c, [a, b]      A4: c, [a, b], d
   by simp_all
+
+ML \<open>
+
+local
+open Preference_Profiles
+open Preference_Profiles_Cmd
+in
+ val foo = find_manipulations (#raw (get_info @{term R20} @{context}), #raw (get_info @{term R21} @{context}))
+end
+
+\<close>
+
+lemma "image_mset (map (op ` (permutation_of_list [(b,d), (d,a), (a,c), (c,b)])))
+       {#[{b,d},{a},{c}], [{b}, {a}, {c,d}], [{a}, {d,c}, {b}], [{d}, {c}, {a,b}]#} =
+       {#[{a,d},{c},{b}], [{d}, {c}, {a,b}], [{c}, {a,b}, {d}], [{a}, {b}, {c,d}]#}"
+  by (simp add: add_ac insert_commute)
 
 
 derive_orbit_equations
