@@ -1,16 +1,19 @@
 theory SDS_Automation
 imports Preference_Profile_Cmd
-keywords "derive_orbit_equations" "derive_support_conditions" :: thy_goal
+keywords 
+  "derive_orbit_equations"
+  "derive_support_conditions" 
+  "derive_strategyproofness_conditions" :: thy_goal
 begin
-
-locale strategyproof_an_sds =
-  strategyproof_sds agents alts sds + an_sds agents alts sds
-  for agents :: "'agent set" and alts :: "'alt set" and sds
-
 
 lemma disj_False_right: "P \<or> False \<longleftrightarrow> P" by simp
 
 lemmas multiset_add_ac = add_ac[where ?'a = "'a multiset"]
+
+lemma multiset_Diff_single_normalize:
+  fixes a c assumes "a \<noteq> c"
+  shows   "({#a#} + B) - {#c#} = {#a#} + (B - {#c#})"
+  using assms by (metis diff_union_swap multiset_add_ac(2))
 
 lemma ex_post_efficient_aux:
   assumes "prefs_from_table_wf agents alts xss" "R \<equiv> prefs_from_table xss"
@@ -231,6 +234,8 @@ next
   qed (insert assms, simp_all)
 qed
 
+end
+
 lemma (in strategyproof_an_sds) strategyproof':
   assumes wf: "is_pref_profile R" "complete_preorder_on alts Ri'" and i: "i \<in> agents"
   shows   "(\<exists>A\<in>pref_classes alts (R i). lottery_prob (sds (R(i := Ri'))) A <
@@ -294,23 +299,58 @@ proof -
 qed
 
 lemma strategyproof_aux':
-  assumes wf: "prefs_from_table_wf agents alts xss1" "R1 = prefs_from_table xss1"
-              "prefs_from_table_wf agents alts xss2" "R2 = prefs_from_table xss2"
+  assumes wf: "prefs_from_table_wf agents alts xss1" "R1 \<equiv> prefs_from_table xss1"
+              "prefs_from_table_wf agents alts xss2" "R2 \<equiv> prefs_from_table xss2"
   assumes sds: "strategyproof_an_sds agents alts sds" and i: "i \<in> agents" and j: "j \<in> agents"
-  assumes eq:  "R1(i := R2 j) = R2" "the (map_of xss1 i) = xs" 
-               "pref_classes_lists_aux (hd xs) (tl xs) = ps"
-  shows   "(\<exists>A\<in>ps. (\<Sum>x\<in>A. pmf (sds R2) x) < (\<Sum>x\<in>A. pmf (sds R1) x)) \<or>
-           (\<forall>A\<in>ps. (\<Sum>x\<in>A. pmf (sds R2) x) = (\<Sum>x\<in>A. pmf (sds R1) x))"
-proof -
+  assumes perm: "list_permutes ys alts"
+  defines "\<sigma> \<equiv> permutation_of_list ys" and "\<sigma>' \<equiv> inverse_permutation_of_list ys"
+  defines "xs \<equiv> the (map_of xss1 i)"
+  defines xs': "xs' \<equiv> map (op ` \<sigma>) (the (map_of xss2 j))"
+  defines "Ri' \<equiv> of_weak_ranking xs'"
+  assumes distinct_ps: "\<forall>A\<in>ps. distinct A"
+  assumes eq:  "mset (map snd xss1) - {#the (map_of xss1 i)#} + {#xs'#} =
+                  mset (map (map (op ` \<sigma>) \<circ> snd) xss2)"
+               "pref_classes_lists_aux (hd xs) (tl xs) = set ` ps" 
+  shows   "list_permutes ys alts \<and> 
+             ((\<exists>A\<in>ps. (\<Sum>x\<leftarrow>A. pmf (sds R2) (\<sigma>' x)) < (\<Sum>x\<leftarrow>A. pmf (sds R1) x)) \<or>
+              (\<forall>A\<in>ps. (\<Sum>x\<leftarrow>A. pmf (sds R2) (\<sigma>' x)) = (\<Sum>x\<leftarrow>A. pmf (sds R1) x)))"
+            (is "_ \<and> ?th")
+proof
+  from perm have perm': "\<sigma> permutes alts" by (simp add: \<sigma>_def)
   from sds interpret strategyproof_an_sds agents alts sds .
-  let ?Ri' = "R2 j"
-  from wf j have wf': "is_pref_profile R1" "complete_preorder_on alts ?Ri'"
-    by (auto intro: pref_profile_from_tableI pref_profile_wf.prefs_wf'(1))
+  from wf(3) j have "j \<in> set (map fst xss2)" by (simp add: prefs_from_table_wf_def)
+  with prefs_from_table_wfD(3)[OF wf(3)] 
+    have xs'_aux: "the (map_of xss2 j) \<in> set (map snd xss2)" by force
+  with wf(3) have xs'_aux': "is_finite_weak_ranking (the (map_of xss2 j))"
+    by (auto simp: prefs_from_table_wf_def)
+  hence "is_weak_ranking xs'" unfolding xs'
+    by (intro is_weak_ranking_map_inj permutes_inj_on[OF perm'])
+       (auto simp add: is_finite_weak_ranking_def)
+  moreover from this xs'_aux' have "is_finite_weak_ranking xs'"
+    by (auto simp: xs' is_finite_weak_ranking_def)
+  moreover from prefs_from_table_wfD(5)[OF wf(3) xs'_aux] 
+    have "\<Union>set xs' = alts" unfolding xs' 
+    by (simp add: image_Union [symmetric] permutes_image[OF perm'])
+  ultimately have wf_xs': "is_weak_ranking xs'" "is_finite_weak_ranking xs'" "\<Union>set xs' = alts"
+    by (simp_all add: is_finite_weak_ranking_def)
+  from this wf j have wf': "is_pref_profile R1" "complete_preorder_on alts Ri'" 
+                      "is_pref_profile R2" "finite_complete_preorder_on alts Ri'"
+    unfolding Ri'_def by (auto intro: pref_profile_from_tableI pref_profile_wf.prefs_wf'(1)
+                                 complete_preorder_of_weak_ranking)
+
+ interpret R1: pref_profile_wf agents alts R1 by fact
+ interpret R2: pref_profile_wf agents alts R2 by fact
 
   from wf(1) i have "i \<in> set (map fst xss1)" by (simp add: prefs_from_table_wf_def)
-  with prefs_from_table_wfD(3)[OF wf(1)] eq
-    have "xs \<in> set (map snd xss1)" by force
+  with prefs_from_table_wfD(3)[OF wf(1)] eq(2)
+    have "xs \<in> set (map snd xss1)" unfolding xs_def by force
   note xs = prefs_from_table_wfD(2)[OF wf(1)] prefs_from_table_wfD(5,6)[OF wf(1) this]
+
+  from wf i wf' wf_xs' xs eq 
+    have eq': "anonymous_profile (R1(i := Ri')) = image_mset (map (op ` \<sigma>)) (anonymous_profile R2)"
+    by (subst R1.anonymous_profile_update)
+       (simp_all add: Ri'_def weak_ranking_of_weak_ranking mset_map multiset.map_comp xs_def
+          anonymise_prefs_from_table prefs_from_table_map_of)
 
   {
     fix p A assume A: "A \<in> pref_classes_lists_aux (hd xs) (tl xs)"
@@ -322,331 +362,30 @@ proof -
       by (rule measure_measure_pmf_finite)
   } note A = this
 
-  from strategyproof'[OF wf' i] eq have
-    "(\<exists>A\<in>pref_classes alts (R1 i). lottery_prob (sds R2) A < lottery_prob (sds R1) A) \<or>
-     (\<forall>A\<in>pref_classes alts (R1 i). lottery_prob (sds R2) A = lottery_prob (sds R1) A)"
+  from strategyproof'[OF wf'(1,2) i] eq' have
+    "(\<exists>A\<in>pref_classes alts (R1 i). lottery_prob (sds (R1(i := Ri'))) A < lottery_prob (sds R1) A) \<or>
+     (\<forall>A\<in>pref_classes alts (R1 i). lottery_prob (sds (R1(i := Ri'))) A = lottery_prob (sds R1) A)"
     by simp
+  also from eq' i have "sds (R1(i := Ri')) = map_pmf \<sigma> (sds R2)"
+    unfolding \<sigma>_def by (intro sds_anonymous_neutral permutation_of_list_permutes perm wf'
+                              pref_profile_wf.wf_update eq)
   also from wf eq i have "R1 i = of_weak_ranking xs"
-    by (simp add: prefs_from_table_map_of)
+    by (simp add: prefs_from_table_map_of xs_def)
   also from xs have "pref_classes alts (of_weak_ranking xs) = pref_classes_lists_aux (hd xs) (tl xs)"
     unfolding is_finite_weak_ranking_def by (intro eval_pref_classes_of_weak_ranking) simp_all
-  finally show ?thesis by (simp add: A eq)
-qed
+  finally have "(\<exists>A\<in>ps. (\<Sum>x\<leftarrow>A. pmf (map_pmf \<sigma> (sds R2)) x) < (\<Sum>x\<leftarrow>A. pmf (sds R1) x)) \<or>
+                (\<forall>A\<in>ps. (\<Sum>x\<leftarrow>A. pmf (map_pmf \<sigma> (sds R2)) x) = (\<Sum>x\<leftarrow>A. pmf (sds R1) x))"
+    using distinct_ps
+    by (simp add: A eq setsum.distinct_set_conv_list del: measure_map_pmf)
+  also from perm' have "pmf (map_pmf \<sigma> (sds R2)) = (\<lambda>x. pmf (sds R2) (inv \<sigma> x))"
+    using pmf_map_inj'[of \<sigma> _ "inv \<sigma> x" for x]
+    by (simp add: fun_eq_iff permutes_inj permutes_inverses)
+  also from perm have "inv \<sigma> = \<sigma>'" unfolding \<sigma>_def \<sigma>'_def
+    by (rule inverse_permutation_of_list_correct [symmetric])
+  finally show ?th .
+qed fact+
 
 
-
-ML \<open>
-
-open Preference_Profiles
-open Preference_Profiles_Cmd
-
-fun mk_permutation_term sigma = 
-  let
-    val altT = sigma |> hd |> fst |> fastype_of
-  in
-    sigma |> map HOLogic.mk_prod |> HOLogic.mk_list (HOLogic.mk_prodT (altT, altT))
-  end
-
-fun prepare_orbit_intro_thms_single ctxt sds_am_thm (p : info) ((x,y), sigma) =
-  let
-    val {wf_raw_thm = wf_raw_thm, def_thm = def_thm, ...} = p
-    val cterm = Thm.cterm_of ctxt
-    val sigma_term = mk_permutation_term sigma
-    val thm = (@{thm an_sds_automorphism_aux} OF [wf_raw_thm, def_thm, sds_am_thm])
-              |> Thm.instantiate' [] (map (SOME o cterm) [sigma_term, x, y])
-  in
-    thm
-  end
-
-fun prepare_orbit_intro_thms ctxt sds_am_thm (p : info) =
-  let
-    val {raw = p_raw, ...} = p
-  in
-    derive_orbit_equations p_raw
-    |> map (prepare_orbit_intro_thms_single ctxt sds_am_thm p)
-  end
-
-fun get_agents_alts_term ({wf_thm, ...} : info) =
-  let
-    val agents :: alts :: _ = wf_thm |> Thm.concl_of |> HOLogic.dest_Trueprop |> strip_comb |> snd
-  in
-    (agents, alts)
-  end
-
-fun gen_derive_orbit_equations lthy ps =
-  let
-    val lthy0 = lthy
-    val infos = map (fn p => get_info p lthy) ps
-    val (altT, agentT) = infos |> hd |> #raw |> (fn x => (altT x, agentT x))
-    val sdsT = sdsT agentT altT
-
-    val ([sds], lthy) = Variable.variant_fixes ["sds"] lthy0
-    val sds = Free (sds, sdsT)
-    val lthy = Variable.declare_term sds lthy
-
-    val (agents_term, alts_term) = get_agents_alts_term (hd infos)
-    val sds_an_const = Const (@{const_name an_sds}, HOLogic.mk_setT agentT --> 
-      HOLogic.mk_setT altT --> sdsT --> HOLogic.boolT)
-    val sds_am_prop = HOLogic.mk_Trueprop (sds_an_const $ agents_term $ alts_term $ sds)
-    val ([sds_am_thm], lthy) = Assumption.add_assumes [Thm.cterm_of lthy sds_am_prop] lthy
-
-    val intros = map (prepare_orbit_intro_thms lthy sds_am_thm) infos
-    val goals = map (map (fn x => (Thm.concl_of x, []))) intros
-    val bindings = infos |> map 
-      (fn info => Binding.qualify true (Binding.name_of (#binding info)) (Binding.name "orbits"))
-    val lthy = lthy addsimps @{thms multiset_add_ac insert_commute}
-
-    val before_proof = 
-      let
-        fun tac ctxt = 
-          ALLGOALS (resolve_tac ctxt (List.concat intros))
-          THEN distinct_subgoals_tac
-      in
-        Method.Basic (SIMPLE_METHOD o tac)
-      end
-
-    fun afterqed (thmss : thm list list) lthy =
-      let
-        val thmss = burrow (Proof_Context.export lthy lthy0) thmss
-        val thmss_aux = map2 (fn bdg => fn thms => ((bdg, []), [(thms, [])])) bindings thmss
-      in
-        Local_Theory.notes thmss_aux lthy0
-        |> snd
-      end
-  in
-    Proof.theorem NONE afterqed goals lthy
-    |> Proof.refine_singleton before_proof
-  end
-
-fun derive_orbit_equations_cmd ps lthy =
-  gen_derive_orbit_equations lthy (map (Syntax.read_term lthy) ps)
-
-val _ =
-  Outer_Syntax.local_theory_to_proof @{command_keyword derive_orbit_equations}
-    "automatically derives the orbit equations for preference profiles"
-    (Scan.repeat1 Parse.term >> derive_orbit_equations_cmd);
-
-
-
-fun prepare_ex_post_conditions sds (info : info) lthy =
-  let
-    val {raw = p, wf_raw_thm, def_thm, ...} = info
-    val losers = pareto_losers p
-    val cterm = Thm.cterm_of lthy
-    fun prep (x,y,i) = 
-      (@{thm ex_post_efficient_aux} OF [wf_raw_thm, def_thm])
-      |> Thm.instantiate' [] (map (SOME o cterm) [i, x, y, sds])
-  in
-    map prep losers
-  end
-
-fun prepare_sdeff_conditions sds (info : info) lthy =
-  let
-    val {raw = p, wf_raw_thm, def_thm, ...} = info
-    val altT = altT p
-    val supports = find_minimal_inefficient_supports p
-    val cterm = Thm.cterm_of lthy
-    fun prep (supp,lott,i) = 
-      let
-        val supp_list = HOLogic.mk_list altT supp
-        val supp_set = HOLogic.mk_set altT supp
-        val lott = 
-          lott
-          |> map (HOLogic.mk_prod o apsnd (MyRat.mk_rat_number @{typ Real.real}))
-          |> HOLogic.mk_list (HOLogic.mk_prodT (altT, @{typ Real.real}))
-      in
-        (@{thm SD_inefficient_support_aux} OF [wf_raw_thm, def_thm])
-        |> Thm.instantiate' [] (map (SOME o cterm) [supp_list, supp_set, lott, i, sds])
-    end
-  in
-    map prep supports
-  end
-
-fun gen_derive_support_conditions providers ps lthy =
-  let
-    val lthy0 = lthy
-    val infos = map (fn p => get_info p lthy) ps
-    val (altT, agentT) = infos |> hd |> #raw |> (fn x => (altT x, agentT x))
-    val sdsT = sdsT agentT altT
-
-    val ([sds], lthy) = Variable.variant_fixes ["sds"] lthy0
-    val sds = Free (sds, sdsT)
-    val lthy = Variable.declare_term sds lthy
-
-    val intros = map (fn info => List.concat (map (fn p => p sds info lthy) providers)) infos
-    val goals = map (map (fn x => (Thm.concl_of x, []))) intros
-    val bindings = infos |> map 
-      (fn info => Binding.qualify true (Binding.name_of (#binding info)) (Binding.name "support"))
-
-    val before_proof = 
-      let
-        fun tac ctxt = 
-          ALLGOALS (resolve_tac ctxt (List.concat intros))
-          THEN distinct_subgoals_tac
-      in
-        Method.Basic (SIMPLE_METHOD o tac)
-      end
-
-    fun postproc lthy thm =
-      thm 
-        |> (fn thm => thm RS @{thm HOL.mp})
-        |> Local_Defs.unfold lthy 
-             (map (fn thm => thm RS @{thm eq_reflection}) @{thms Set.bex_simps disj_False_right})
-
-    fun afterqed (thmss : thm list list) lthy =
-      let
-        val thmss = 
-          thmss |> burrow (Proof_Context.export lthy lthy0 o map (postproc lthy))
-        val thmss_aux = map2 (fn bdg => fn thms => ((bdg, []), [(thms, [])])) bindings thmss
-      in
-        Local_Theory.notes thmss_aux lthy0
-        |> snd
-      end
-  in
-    Proof.theorem NONE afterqed goals lthy
-    |> Proof.refine_singleton before_proof
-  end
-
-fun gen_derive_support_conditions_cmd providers ts lthy = 
-  gen_derive_support_conditions providers (map (Syntax.read_term lthy) ts) lthy
-
-val derive_support_conditions_cmd = 
-  gen_derive_support_conditions_cmd [prepare_ex_post_conditions, prepare_sdeff_conditions]
-
-val _ =
-  Outer_Syntax.local_theory_to_proof @{command_keyword derive_support_conditions}
-    "automatically conditions for the support of preference profiles"
-    (Scan.repeat1 Parse.term >> derive_support_conditions_cmd);
-
-\<close>
-
-
-(* TODO: For testing only; can be removed *)
-datatype agents = A1 | A2 | A3 | A4
-datatype alts = a | b | c | d
-
-preference_profile 
-  agents: "{A1, A2, A3, A4}"
-  alts:   "{a, b, c, d}"
-where R1  = A1: [c, d], [a, b]    A2: [b, d], a, c      A3: a, b, [c, d]      A4: [a, c], [b, d]
-  and R2  = A1: [a, c], [b, d]    A2: [c, d], a, b      A3: [b, d], a, c      A4: a, b, [c, d]
-  and R3  = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: d, [a, b], c      A4: c, a, [b, d]
-  and R4  = A1: [a, b], [c, d]    A2: [a, d], [b, c]    A3: c, [a, b], d      A4: d, c, [a, b]
-  and R5  = A1: [c, d], [a, b]    A2: [a, b], [c, d]    A3: [a, c], d, b      A4: d, [a, b], c
-  and R6  = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: [a, c], [b, d]    A4: d, b, a, c
-  and R7  = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: a, c, d, b        A4: d, [a, b], c
-  and R8  = A1: [a, b], [c, d]    A2: [a, c], [b, d]    A3: d, [a, b], c      A4: d, c, [a, b]
-  and R9  = A1: [a, b], [c, d]    A2: [a, d], c, b      A3: d, c, [a, b]      A4: [a, b, c], d
-  and R10 = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: [a, c], d, b      A4: [b, d], a, c
-  and R11 = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: d, [a, b], c      A4: c, a, b, d
-  and R12 = A1: [c, d], [a, b]    A2: [a, b], [c, d]    A3: [a, c], d, b      A4: [a, b, d], c
-  and R13 = A1: [a, c], [b, d]    A2: [c, d], a, b      A3: [b, d], a, c      A4: a, b, d, c
-  and R14 = A1: [a, b], [c, d]    A2: d, c, [a, b]      A3: [a, b, c], d      A4: a, d, c, b
-  and R15 = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: [b, d], a, c      A4: a, c, d, b
-  and R16 = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: a, c, d, b        A4: [a, b, d], c
-  and R17 = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: [a, c], [b, d]    A4: d, [a, b], c
-  and R18 = A1: [a, b], [c, d]    A2: [a, d], [b, c]    A3: [a, b, c], d      A4: d, c, [a, b]
-  and R19 = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: [b, d], a, c      A4: [a, c], [b, d]
-  and R20 = A1: [b, d], a, c      A2: b, a, [c, d]      A3: a, c, [b, d]      A4: d, c, [a, b]
-  and R21 = A1: [a, d], c, b      A2: d, c, [a, b]      A3: c, [a, b], d      A4: a, b, [c, d]
-  and R22 = A1: [a, c], d, b      A2: d, c, [a, b]      A3: d, [a, b], c      A4: a, b, [c, d]
-  and R23 = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: [a, c], [b, d]    A4: [a, b, d], c
-  and R24 = A1: [c, d], [a, b]    A2: d, b, a, c        A3: c, a, [b, d]      A4: b, a, [c, d]
-  and R25 = A1: [c, d], [a, b]    A2: [b, d], a, c      A3: a, b, [c, d]      A4: a, c, [b, d]
-  and R26 = A1: [b, d], [a, c]    A2: [c, d], [a, b]    A3: a, b, [c, d]      A4: a, c, [b, d]
-  and R27 = A1: [a, b], [c, d]    A2: [b, d], a, c      A3: [a, c], [b, d]    A4: [c, d], a, b
-  and R28 = A1: [c, d], a, b      A2: [b, d], a, c      A3: a, b, [c, d]      A4: a, c, [b, d]
-  and R29 = A1: [a, c], d, b      A2: [b, d], a, c      A3: a, b, [c, d]      A4: d, c, [a, b]
-  and R30 = A1: [a, d], c, b      A2: d, c, [a, b]      A3: c, [a, b], d      A4: [a, b], d, c
-  and R31 = A1: [b, d], a, c      A2: [a, c], d, b      A3: c, d, [a, b]      A4: [a, b], c, d
-  and R32 = A1: [a, c], d, b      A2: d, c, [a, b]      A3: d, [a, b], c      A4: [a, b], d, c
-  and R33 = A1: [c, d], [a, b]    A2: [a, c], d, b      A3: a, b, [c, d]      A4: d, [a, b], c
-  and R34 = A1: [a, b], [c, d]    A2: a, c, d, b        A3: b, [a, d], c      A4: c, d, [a, b]
-  and R35 = A1: [a, d], c, b      A2: a, b, [c, d]      A3: [a, b, c], d      A4: d, c, [a, b]
-  and R36 = A1: [c, d], [a, b]    A2: [a, c], d, b      A3: [b, d], a, c      A4: a, b, [c, d]
-  and R37 = A1: [a, c], [b, d]    A2: [b, d], [a, c]    A3: a, b, [c, d]      A4: c, d, [a, b]
-  and R38 = A1: [c, d], a, b      A2: [b, d], a, c      A3: a, b, [c, d]      A4: [a, c], b, d
-  and R39 = A1: [a, c], d, b      A2: [b, d], a, c      A3: a, b, [c, d]      A4: [c, d], a, b
-  and R40 = A1: [a, d], c, b      A2: [a, b], c, d      A3: [a, b, c], d      A4: d, c, [a, b]
-  and R41 = A1: [a, d], c, b      A2: [a, b], d, c      A3: [a, b, c], d      A4: d, c, [a, b]
-  and R42 = A1: [c, d], [a, b]    A2: [a, b], [c, d]    A3: d, b, a, c        A4: c, a, [b, d]
-  and R43 = A1: [a, b], [c, d]    A2: [c, d], [a, b]    A3: d, [a, b], c      A4: a, [c, d], b
-  and R44 = A1: [c, d], [a, b]    A2: [a, c], d, b      A3: [a, b], d, c      A4: [a, b, d], c
-  and R45 = A1: [a, c], d, b      A2: [b, d], a, c      A3: [a, b], c, d      A4: [c, d], b, a
-  and R46 = A1: [b, d], a, c      A2: d, c, [a, b]      A3: [a, c], [b, d]    A4: b, a, [c, d]
-  and R47 = A1: [a, b], [c, d]    A2: [a, d], c, b      A3: d, c, [a, b]      A4: c, [a, b], d
-  by simp_all
-
-ML \<open>
-
-local
-open Preference_Profiles
-open Preference_Profiles_Cmd
-in
- val foo = find_manipulations (#raw (get_info @{term R20} @{context}), #raw (get_info @{term R21} @{context}))
-end
-
-\<close>
-
-lemma "image_mset (map (op ` (permutation_of_list [(b,d), (d,a), (a,c), (c,b)])))
-       {#[{b,d},{a},{c}], [{b}, {a}, {c,d}], [{a}, {d,c}, {b}], [{d}, {c}, {a,b}]#} =
-       {#[{a,d},{c},{b}], [{d}, {c}, {a,b}], [{c}, {a,b}, {d}], [{a}, {b}, {c,d}]#}"
-  by (simp add: add_ac insert_commute)
-
-
-derive_orbit_equations
-  R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15 R16 R17 R18 R19 R20
-  R21 R22 R23 R24 R25 R26 R27 R28 R29 R30 R31 R32 R33 R34 R35 R36 R37 R38 R39 R40
-  R41 R42 R43 R44 R45 R46 R47
-  by simp_all
-
-derive_support_conditions 
-  R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15 R16 R17 R18 R19 R20
-  R21 R22 R23 R24 R25 R26 R27 R28 R29 R30 R31 R32 R33 R34 R35 R36 R37 R38 R39 R40
-  R41 R42 R43 R44 R45 R46 R47
-  by simp_all
-
-
-
-
-(*
-preference_profile 
-  agents: "{A1, A2, A3, A4}"
-  alts:   "{a, b, c, d}"
-  where R1  = A1: [a,c], [b,d]     A2: [b,d], [a,c]     A3: [a,d], b, c     A4: [b,c], a, d
-    and R2  = A1: [a,c], [b,d]     A2: [b,d], [a,c]     A3: a, d, [b,c]     A4: b, c, [a, d]
-    and R3  = A1: [a,c], [b,d]     A2: [b,d], [a,c]     A3: [a,d], b, c     A4: d, c, a, b
-    and R4  = A1: [a,c], [b,d]     A2: [b,d], [a,c]     A3: [c,b], d, a     A4: b, a, c, d
-    and R5  = A1: [a,c,d], [b]     A2: [b,a], [c,d]     A3: [c,b], d, a     A4: b, a, [d,c]
-    and R6  = A1: [a,c], d, b      A2: [b,d], a, c      A3: [a,b], c, d     A4: [c, d], b, a
-by (simp_all add: insert_eq_iff)
-*)
-
-(*
-ML_val \<open>
-  open Preference_Profiles;
-  
-  let
-    val ctxt = @{context}
-    val {raw = raw1, ...} = Preference_Profiles_Cmd.get_info @{term R1} ctxt
-    val {raw = raw2, ...} = Preference_Profiles_Cmd.get_info @{term R2} ctxt
-    val {raw = raw3, ...} = Preference_Profiles_Cmd.get_info @{term R3} ctxt
-    val {raw = raw4, ...} = Preference_Profiles_Cmd.get_info @{term R4} ctxt
-    val {raw = raw5, ...} = Preference_Profiles_Cmd.get_info @{term R5} ctxt
-    val b = Preference_Profiles.equiv_profile_anonymity (raw1, raw2)
-    val w = Preference_Profiles.find_an_isomorphisms (raw1, raw2) |> Seq.list_of
-    val auto = derive_orbit_equations raw1
-    val cterm = Thm.cterm_of ctxt
-  in
-    auto |> hd
-(*    auto |> map (apfst (apply2 cterm) o apsnd (map (apply2 cterm))) *)
-(*    find_manipulations (raw1, raw3)
-    |> map (fn (a,b,c) => (cterm a, map (map cterm) b, map (apply2 cterm) c)) *)
-(*      find_minimal_inefficient_supports raw1 
-      |> map (fn (a,b,c) => (map cterm a, map (apfst cterm) b, cterm c)) *)
-(*      pareto_losers raw5 |> map (fn (a,b,c) => (cterm a, cterm b, cterm c)) *)
-  end
-  
-\<close>*)
+ML_file "sds_automation.ML"
 
 end

@@ -69,9 +69,10 @@ val find_minimal_inefficient_supports : profile -> (support * lottery * term) li
 (* Finds all ways for one voter to manipulate the first given profile to obtain a profile
    that is equivalent to the second profile modulo anonymity and neutrality.
    Returns a witness for each possible manipulation, consisting of the manipulating voter, 
-   her alternative preferences, and the permutation of alternatives.
+   the voter with whose preferences her preferences need to be replaced, 
+   and the permutation of alternatives.
  *)
-val find_manipulations : profile * profile -> (term * prefs * term permutation) list
+val find_manipulations : profile * profile -> (term * term * term permutation) list
 
 end
 
@@ -372,11 +373,11 @@ fun find_manipulations (p1, p2) =
   let
     val alts = alts_of_profile p1
   in
-    permutations op aconv alts |> bind (fn p =>
-      p2 |> bind' (fn (_, prefs) =>
-        Seq.of_list (manipulations (permute_profile p p1) prefs)
+    permutations op aconv alts |> bind (fn sigma =>
+      p2 |> bind' (fn (j, prefs) =>
+        Seq.of_list (manipulations (permute_profile sigma p1) prefs)
         |> Seq.filter (fn (_, _, p1') => equiv_profile_anonymity (p1', p2))
-        |> Seq.map (fn (a, b, _) => (a, map (map (apply_reverse_permutation op aconv p)) b, p))))
+        |> Seq.map (fn (a, _, _) => (a, j, sigma))))
     |> Seq.list_of
   end
 

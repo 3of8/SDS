@@ -188,21 +188,45 @@ locale an_sds =
   for agents :: "'agent set" and alts :: "'alt set" and sds
 begin
 
+lemma sds_anonymous_neutral:
+  assumes perm: "\<sigma> permutes alts" and wf: "is_pref_profile R1" "is_pref_profile R2"
+  assumes eq: "anonymous_profile R1 = 
+                 image_mset (map (op ` \<sigma>)) (anonymous_profile R2)"
+  shows   "sds R1 = map_pmf \<sigma> (sds R2)"
+proof -
+  interpret R1: pref_profile_wf agents alts R1 by fact
+  interpret R2: pref_profile_wf agents alts R2 by fact
+  from perm have wf': "is_pref_profile (permute_profile \<sigma> R2)"
+    by (rule R2.wf_permute_alts)
+  from eq perm have "anonymous_profile R1 = anonymous_profile (permute_profile \<sigma> R2)"
+    by (simp add: R2.anonymous_profile_permute)
+  from anonymous_profile_agent_permutation[OF this wf(1) wf']
+    obtain \<pi> where "\<pi> permutes agents" "permute_profile \<sigma> R2 \<circ> \<pi> = R1" by auto
+  have "sds (permute_profile \<sigma> R2 \<circ> \<pi>) = sds (permute_profile \<sigma> R2)"
+    by (rule anonymous) fact+
+  also have "\<dots> = map_pmf \<sigma> (sds R2)"
+    by (rule neutral) fact+
+  also have "permute_profile \<sigma> R2 \<circ> \<pi> = R1" by fact
+  finally show ?thesis .
+qed
+
+
+lemma sds_anonymous_neutral':
+  assumes perm: "\<sigma> permutes alts" and wf: "is_pref_profile R1" "is_pref_profile R2"
+  assumes eq: "anonymous_profile R1 = 
+                 image_mset (map (op ` \<sigma>)) (anonymous_profile R2)"
+  shows   "pmf (sds R1) (\<sigma> x) = pmf (sds R2) x"
+proof -
+  have "sds R1 = map_pmf \<sigma> (sds R2)" by (intro sds_anonymous_neutral) fact+
+  also have "pmf \<dots> (\<sigma> x) = pmf (sds R2) x" by (intro pmf_map_inj' permutes_inj[OF perm])
+  finally show ?thesis .
+qed
+
 lemma sds_automorphism:
   assumes perm: "\<sigma> permutes alts" and wf: "is_pref_profile R"
-  assumes eq: "anonymous_profile R = anonymous_profile (permute_profile \<sigma> R)"
+  assumes eq: "image_mset (map (op ` \<sigma>)) (anonymous_profile R) = anonymous_profile R"
   shows   "map_pmf \<sigma> (sds R) = sds R"
-proof -
-  from wf interpret pref_profile_wf agents alts R .
-  from perm have "is_pref_profile (permute_profile \<sigma> R)"
-    by (rule wf_permute_alts)
-  from anonymous_profile_agent_permutation[OF eq wf this finite_agents] guess \<pi> .
-  have "sds (permute_profile \<sigma> R \<circ> \<pi>) = sds (permute_profile \<sigma> R)"
-    by (rule anonymous) fact+
-  also have "\<dots> = map_pmf \<sigma> (sds R)" by (rule neutral) fact+
-  also have "permute_profile \<sigma> R \<circ> \<pi> = R" by fact
-  finally show ?thesis ..
-qed  
+  using sds_anonymous_neutral[OF perm wf wf eq [symmetric]] ..
 
 end
 
@@ -401,5 +425,10 @@ sublocale strategyproof_sds
      (simp add: strongly_strategyproof_imp_not_manipulable strongly_strategyproof)
 
 end
+
+
+locale strategyproof_an_sds =
+  strategyproof_sds agents alts sds + an_sds agents alts sds
+  for agents :: "'agent set" and alts :: "'alt set" and sds
 
 end

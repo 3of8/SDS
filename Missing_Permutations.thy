@@ -213,6 +213,17 @@ qed
 definition permutation_of_list where
   "permutation_of_list xs x = (case map_of xs x of None \<Rightarrow> x | Some y \<Rightarrow> y)"
 
+lemma permutation_of_list_Cons:
+  "permutation_of_list ((x,y) # xs) x' = (if x = x' then y else permutation_of_list xs x')"
+  by (simp add: permutation_of_list_def)
+
+fun inverse_permutation_of_list where
+  "inverse_permutation_of_list [] x = x"
+| "inverse_permutation_of_list ((y,x')#xs) x =
+     (if x = x' then y else inverse_permutation_of_list xs x)"
+
+declare inverse_permutation_of_list.simps [simp del]
+
 lemma inj_on_map_of:
   assumes "distinct (map snd xs)"
   shows   "inj_on (map_of xs) (set (map fst xs))"
@@ -278,5 +289,58 @@ lemma eval_permutation_of_list [simp]:
   "x = x' \<Longrightarrow> permutation_of_list ((x',y)#xs) x = y"
   "x \<noteq> x' \<Longrightarrow> permutation_of_list ((x',y')#xs) x = permutation_of_list xs x"
   by (simp_all add: permutation_of_list_def)
+
+lemma eval_inverse_permutation_of_list [simp]:
+  "inverse_permutation_of_list [] x = x"
+  "x = x' \<Longrightarrow> inverse_permutation_of_list ((y,x')#xs) x = y"
+  "x \<noteq> x' \<Longrightarrow> inverse_permutation_of_list ((y',x')#xs) x = inverse_permutation_of_list xs x"
+  by (simp_all add: inverse_permutation_of_list.simps)
+
+lemma permutation_of_list_id:
+  assumes "x \<notin> set (map fst xs)"
+  shows   "permutation_of_list xs x = x"
+  using assms by (induction xs) (auto simp: permutation_of_list_Cons)
+
+lemma permutation_of_list_unique':
+  assumes "distinct (map fst xs)" "(x, y) \<in> set xs"
+  shows   "permutation_of_list xs x = y"
+  using assms by (induction xs) (force simp: permutation_of_list_Cons)+
+
+lemma permutation_of_list_unique:
+  assumes "list_permutes xs A" "(x,y) \<in> set xs"
+  shows   "permutation_of_list xs x = y"
+  using assms by (intro permutation_of_list_unique') (simp_all add: list_permutes_def)
+
+lemma inverse_permutation_of_list_id:
+  assumes "x \<notin> set (map snd xs)"
+  shows   "inverse_permutation_of_list xs x = x"
+  using assms by (induction xs) auto
+
+lemma inverse_permutation_of_list_unique':
+  assumes "distinct (map snd xs)" "(x, y) \<in> set xs"
+  shows   "inverse_permutation_of_list xs y = x"
+  using assms by (induction xs) (force simp: inverse_permutation_of_list.simps)+
+
+lemma inverse_permutation_of_list_unique:
+  assumes "list_permutes xs A" "(x,y) \<in> set xs"
+  shows   "inverse_permutation_of_list xs y = x"
+  using assms by (intro inverse_permutation_of_list_unique') (simp_all add: list_permutes_def)
+
+lemma inverse_permutation_of_list_correct:
+  assumes "list_permutes xs (A :: 'a set)"
+  shows   "inverse_permutation_of_list xs = inv (permutation_of_list xs)"
+proof (rule ext, rule sym, subst permutes_inv_eq)
+  from assms show "permutation_of_list xs permutes A" by simp
+next
+  fix x
+  show "permutation_of_list xs (inverse_permutation_of_list xs x) = x"
+  proof (cases "x \<in> set (map snd xs)")
+    case True
+    then obtain y where "(y, x) \<in> set xs" by force
+    with assms show ?thesis
+      by (simp add: inverse_permutation_of_list_unique permutation_of_list_unique)
+  qed (insert assms, auto simp: list_permutes_def
+         inverse_permutation_of_list_id permutation_of_list_id)
+qed  
 
 end

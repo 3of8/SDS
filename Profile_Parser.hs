@@ -1,5 +1,8 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables, PatternGuards #-}
+import Control.Arrow
+import Data.Char
 import Data.List
+import Data.Maybe
 
 parseLine :: String -> [[[Int]]]
 parseLine s = concat $ take 1 $
@@ -39,11 +42,56 @@ pad _ [x] = x
 pad (n:ns) (x:xs) = x ++ replicate (padding (length x)) ' ' ++ pad ns xs
   where padding m = n - m `mod` n
 
-foo = 
+makeDefinitions = 
   unlines . map (pad (10 : 2 : repeat 22)) . zipWith (\i -> (f i ++)) [1..] . 
   map (zipWith (\i -> (g i ++)) [1..]) . map (map printLine) . chunksOf 4 . parseLines
   where f 1 = ["where R1", "="]
         f i = ["  and R" ++ show i, "="]
         g i = "A" ++ show i ++ ": "
+
+
+manipText = "; This manipulation was obtained from "
+canonicalText = "; The manipulated profile in canonical form is "
+
+getPrefixed :: String -> [String] -> Maybe (String, [String])
+getPrefixed prefix [] = Nothing
+getPrefixed prefix (x:xs)
+  | Just y <- stripPrefix prefix x = Just (y, xs)
+  | otherwise = getPrefixed prefix xs
+  
+parseProfileNames :: [String] -> [String]
+parseProfileNames = map (('p':) . takeWhile isDigit) . mapMaybe (stripPrefix "p")
+
+manipulations xs =
+  case foo xs of
+    Nothing -> []
+    Just (x, xs) -> x : manipulations xs
+  where foo xs =
+          do (p, xs) <- fmap (first init) $ getPrefixed manipText xs
+             (p', xs) <- fmap (first init) $ getPrefixed canonicalText xs
+             return ((p, p'), xs)
+
+suppText = "; Inefficient support "
+
+supports xs =
+  case getPrefixed suppText xs of
+    Just (y, xs) -> (init $ drop 13 $ dropWhile (/= ']') y) : supports xs
+    Nothing -> []
+
+the :: Maybe a -> a
+the (Just x) = x
+    
+main' =
+  do profileMap <- fmap (flip zip [(1::Int)..] . parseProfileNames . lines) (readFile "profiles_raw")
+     let profile x = maybe (error ("No such profile: " ++ x)) id (lookup x profileMap)
+     ms <- fmap (manipulations . lines) (readFile "mus_annotated.smt2")
+     mapM_ putStrLn ["R" ++ show (profile p1) ++ "_R" ++ show (profile p2) ++ ".strategyproofness" | (p1, p2) <- ms]
+     
+main =
+  do profileMap <- fmap (flip zip [(1::Int)..] . parseProfileNames . lines) (readFile "profiles_raw")
+     let profile x = maybe (error ("No such profile: " ++ x)) id (lookup x profileMap)
+     ss <- fmap (supports . lines) (readFile "mus_annotated.smt2")
+     mapM_ putStrLn ["R" ++ show (profile p) ++ ".support" | p <- ss]
+     
 
 
