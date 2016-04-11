@@ -7,7 +7,7 @@
 ; (echo "1 agent : 0 ~ 3 > 1 > 2")
 ; (echo "1 agent : 1 ~ 2 > 0 > 3")
 (set-logic QF_LRA)
-(set-option :produce-unsat-cores true)
+(set-option :produce-proofs true)
 ; (echo "Lottery definitions")
 (declare-fun p18a0 () Real)
 (declare-fun p18a1 () Real)
@@ -1807,4 +1807,4 @@
 ; 1 agent : 3 > 2 > 0 ~ 1
 ; 1 agent : 2 > 0 ~ 1 > 3
 (check-sat)
-(get-unsat-core)
+(get-proof)

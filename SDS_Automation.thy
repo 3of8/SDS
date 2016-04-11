@@ -10,6 +10,9 @@ lemma disj_False_right: "P \<or> False \<longleftrightarrow> P" by simp
 
 lemmas multiset_add_ac = add_ac[where ?'a = "'a multiset"]
 
+lemma less_or_eq_real: 
+  "(x::real) < y \<or> x = y \<longleftrightarrow> x \<le> y" "x < y \<or> y = x \<longleftrightarrow> x \<le> y" by linarith+
+
 lemma multiset_Diff_single_normalize:
   fixes a c assumes "a \<noteq> c"
   shows   "({#a#} + B) - {#c#} = {#a#} + (B - {#c#})"
