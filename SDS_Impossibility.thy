@@ -90,6 +90,10 @@ lemmas lottery_conditions =
   pmf_sds_nonneg [unfolded alt_iff] lottery_prob_alts'[OF sds_wf]
 
 
+lemma R45 [simp]: "pmf (sds R45) a = 1/4" "pmf (sds R45) b = 1/4" 
+           "pmf (sds R45) c = 1/4" "pmf (sds R45) d = 1/4"
+  using R45.orbits lottery_conditions[OF R45_wf] by simp_all
+
 lemma R10_bc [simp]: "pmf (sds R10) b = 0" "pmf (sds R10) c = 0"
   using R10.support R10.orbits by auto
 
@@ -130,13 +134,9 @@ lemmas R43_bc [simp] = R43.support
 lemma R43_ad [simp]: "pmf (sds R43) a = 1/2" "pmf (sds R43) d = 1/2"
   using lottery_conditions[OF R43_wf] R43_bc R43.orbits by simp_all
 
-lemma R45 [simp]: "pmf (sds R45) a = 1/4" "pmf (sds R45) b = 1/4" 
-           "pmf (sds R45) c = 1/4" "pmf (sds R45) d = 1/4"
-  using R45.orbits lottery_conditions[OF R45_wf] by simp_all
-
 
 lemma R39_b [simp]: "pmf (sds R39) b = 0"
-  using R39_R29.strategyproofness R29_R39.strategyproofness R39.support
+  using R39_R29.strategyproofness(1) R29_R39.strategyproofness(1) R39.support
         lottery_conditions[OF R39_wf] by auto
 
 lemma R36_a [simp]: "pmf (sds R36) a = 1/2" and R36_b [simp]: "pmf (sds R36) b = 0"
@@ -147,8 +147,10 @@ proof -
   also have "pmf (sds R39) a \<le> 1/2"
     using R39_R29.strategyproofness(1) lottery_conditions[OF R39_wf] by auto
   finally have "pmf (sds R36) a \<le> 1/2" .
-  moreover have "pmf (sds R36) a \<ge> 1/2"
-    using R10_R36.strategyproofness(1) R36_R10.strategyproofness(1) by auto
+  moreover from R36_R10.strategyproofness(2) lottery_conditions[OF R36_wf] 
+    have "pmf (sds R36) a + pmf (sds R36) b \<ge> 1/2" by auto
+  hence "pmf (sds R36) a \<ge> 1/2"
+    using R10_R36.strategyproofness(1) apply auto
   ultimately show "pmf (sds R36) a = 1/2" by simp
   with R10_R36.strategyproofness(1)
     show "pmf (sds R36) b = 0" by simp
@@ -175,6 +177,7 @@ proof -
     using R28_R32.strategyproofness lottery_conditions[OF R32_wf] by auto
 qed
 
+
 lemmas R12_b [simp] = R12.support
 
 lemma R12_c [simp]: "pmf (sds R12) c = 0"
@@ -187,10 +190,12 @@ lemma R12_a_ge_one_half: "pmf (sds R12) a \<ge> 1/2"
   using R10_R12.strategyproofness lottery_conditions[OF R12_wf]
   by auto
 
+
 lemmas R37_bd [simp] = R37.orbits
 
 lemma R37_b [simp]: "pmf (sds R37) b = 1/2 - pmf (sds R37) a"
   using lottery_conditions[OF R37_wf] by simp
+
 
 lemma R44 [simp]: 
   "pmf (sds R44) a = pmf (sds R12) a" "pmf (sds R44) d = 1 - pmf (sds R12) a"
@@ -204,20 +209,20 @@ qed (insert R44.support, simp_all)
 lemma R9_a [simp]: "pmf (sds R9) a = pmf (sds R35) a"
  using R9_R35.strategyproofness R35_R9.strategyproofness R9.support R35.support by auto
 
+(* TODO remove *)
 lemma R23_R12: "pmf (sds R12) a \<le> pmf (sds R23) c + pmf (sds R23) a"
   using R23_R12.strategyproofness(2) by simp
 
+(* TODO move? *)
 lemma R16_R12: "pmf (sds R16) c + pmf (sds R16) a \<le> pmf (sds R12) a"
   using R12_R16.strategyproofness(2) R16.support lottery_conditions[OF R16_wf] by auto
 
 
 lemma R18_c [simp]: "pmf (sds R18) c = pmf (sds R9) c"
-proof -
-  from R9_R18.strategyproofness(2) R18_R9.strategyproofness(2) R18.support R9.support
-       lottery_conditions[OF R9_wf] lottery_conditions[OF R18_wf]
-    show "pmf (sds R18) c = pmf (sds R9) c" by auto
-qed
+  using R9_R18.strategyproofness(2) R18_R9.strategyproofness(2) R18.support R9.support
+        lottery_conditions[OF R9_wf] lottery_conditions[OF R18_wf] by auto
 
+(* TODO move? *)
 lemma R5_R17: "pmf (sds R17) d \<ge> pmf (sds R5) d"
   using R5_R17.strategyproofness(2) R17.support
         lottery_conditions[OF R5_wf] lottery_conditions[OF R17_wf] by auto
@@ -267,12 +272,7 @@ qed
 
 lemma R13_aux: "pmf (sds R13) b = 0" "pmf (sds R13) c = 0" "pmf (sds R13) d = 1 - pmf (sds R13) a"
   and R27_R13 [simp]: "pmf (sds R27) a = pmf (sds R13) a" 
-proof -
-  from R27_R13.strategyproofness R13_R27.strategyproofness
-       lottery_conditions[OF R13_wf]
-    show "pmf (sds R13) b = 0" "pmf (sds R13) c = 0" "pmf (sds R13) d = 1 - pmf (sds R13) a"
-         "pmf (sds R27) a = pmf (sds R13) a" by auto
-qed
+  using R27_R13.strategyproofness(1) R13_R27.strategyproofness(1) lottery_conditions[OF R13_wf] by auto
 
 lemma R13 [simp]: "pmf (sds R13) a = 1/2" "pmf (sds R13) b = 0" "pmf (sds R13) c = 0" "pmf (sds R13) d = 1/2"
   using R15_R13.strategyproofness R13_R15.strategyproofness R13_aux by simp_all
