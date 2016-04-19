@@ -453,10 +453,15 @@ lemma R23_a [simp]: "pmf (sds R23) a = pmf (sds R14) a"
   and R18 [simp]: "pmf (sds R18) a = pmf (sds R14) a" "pmf (sds R18) b = 0"
                   "pmf (sds R18) d = 0" "pmf (sds R18) c = 1 - pmf (sds R14) a"
 proof -
-  have R21_R23: "pmf (sds R21) a \<le> pmf (sds R23) a"
-    using R23_R12.strategyproofness(2) by auto
-  from R23_R18.strategyproofness R21_R23 lottery_conditions[OF R18_wf]
-    show "pmf (sds R18) d = 0" by auto
+  from R23_R18.strategyproofness 
+    have "pmf (sds R18) d \<le> pmf (sds R21) a - pmf (sds R23) a"
+apply (simp del: R18_c)
+apply (subst (asm) R18_c)
+apply (subst (asm) R9)
+    
+  also from R23_R12.strategyproofness(2)
+    have R21_R23: "pmf (sds R21) a - pmf (sds R23) a \<le> 0" by auto
+  finally show "pmf (sds R18) d = 0" by auto
   with R23_R18.strategyproofness R21_R23 lottery_conditions[OF R18_wf] R18.support
     show "pmf (sds R23) a = pmf (sds R14) a" "pmf (sds R18) a = pmf (sds R14) a"
          "pmf (sds R18) c = 1 - pmf (sds R14) a" by auto
