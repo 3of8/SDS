@@ -30,6 +30,13 @@ val permute_profile : term permutation -> profile -> profile
 
 val ranking : prefs -> term * term -> bool
 val strict_ranking : prefs -> term * term -> bool
+val pareto : profile -> term * term -> bool
+val strict_pareto : profile -> term * term -> bool
+
+val probability : lottery -> term list -> MyRat.rat
+val stochastic_dominance : prefs -> lottery * lottery -> bool
+val strict_stochastic_dominance : prefs -> lottery * lottery -> bool
+val mk_support_witness : profile -> support * lottery -> support * lottery * term
 
 (* Lazy list of all permutations that, when applied to the first profile, yield one 
    anonymity-equivalent to the second profile *)
@@ -54,6 +61,8 @@ val pareto_pairs : profile -> (term * term * term) list
 
 (* The set of all Pareto losers in a profile *)
 val pareto_losers : profile -> (term * term * term) list
+
+val find_pareto_witness : profile -> term -> (term * term * term) option
 
 (* Construct the linear program that encodes SD inefficiency of the given support *)
 val mk_inefficiency_lp : profile -> support -> (string list * string * int) list
@@ -147,6 +156,44 @@ fun permutations eq xs =
     Seq.map (fn ys => xs ~~ ys) (go [] xs)
   end
 
+fun probability (lott1 : lottery) xs =
+  lott1 |> filter (member op aconv xs o fst) |> (fn xs => fold (fn x => fn y => snd x + y) xs MyRat.zero)
+
+fun uniform_lottery xs = 
+  let
+    val p = MyRat.of_quotient (1, length xs)
+  in
+    map (fn x => (x, p)) xs
+  end
+
+fun stochastic_dominance p (lott1, lott2) =
+  let
+    fun go _ [] = true
+      | go _ [_] = true
+      | go (prob1 : MyRat.rat, prob2 : MyRat.rat) (xs::xss) = 
+          let 
+            val (prob1, prob2) = (prob1 + probability lott1 xs, prob2 + probability lott2 xs)
+          in  
+            prob1 <= prob2 andalso go (prob1, prob2) xss
+          end
+  in
+    go (MyRat.zero, MyRat.zero) p
+  end
+
+fun strict_stochastic_dominance p (lott1, lott2) =
+  stochastic_dominance p (lott1, lott2) andalso not (stochastic_dominance p (lott2, lott1))  
+
+fun mk_support_witness p (supp, lott) =
+  let
+    val lott' = uniform_lottery supp
+    val i = find_first (fn (_, ps) => not (stochastic_dominance ps (lott, lott'))) p
+            |> Option.map fst
+  in
+    case i of
+      NONE => error "Not a proper inefficiency wittnes."
+    | SOME i => (supp, lott, i)
+  end
+
 fun permute_profile p = map (fn (x, yss) => (x, map (map (apply_permutation op aconv p)) yss))
 
 fun find_an_isomorphisms (xs, ys) =
@@ -187,6 +234,9 @@ fun preferred_alts r x =
     go [] r
   end
 
+fun pareto p (x,y) = forall (fn (_, prefs) => ranking prefs (x,y)) p
+fun strict_pareto p (x,y) = pareto p (x,y) andalso not (pareto p (y,x))
+
 fun pareto_pairs p =
   let
     val alts = alts_of_profile p
@@ -222,6 +272,16 @@ fun pareto_pairs p =
 
 val pareto_losers = 
   pareto_pairs #> map (fn (a,b,c) => (b,a,c)) #> distinct (op aconv o apply2 #1)
+
+fun find_pareto_witness p x =
+  alts_of_profile p
+  |> remove op aconv x
+  |> get_first (fn y => 
+       if forall (fn (_, prefs) => ranking prefs (x,y)) p then
+         find_first (fn (_, prefs) => not (ranking prefs (y,x))) p
+         |> Option.map (fn (i, _) => (x,y,i))
+       else
+         NONE)
 
 (* Poor man's Union-Find *)
 fun eqclasses eq carrier eqs = 

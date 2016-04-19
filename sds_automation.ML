@@ -182,10 +182,10 @@ val _ =
           derive_orbit_equations_cmd wf_thm ps ctxt
         end))
 
-fun prepare_ex_post_conditions sds (info : info) lthy =
+fun gen_prepare_ex_post_conditions find_losers sds (info : info) lthy =
   let
     val {raw = p, wf_raw_thm, def_thm, ...} = info
-    val losers = pareto_losers p
+    val losers = find_losers p
     val cterm = Thm.cterm_of lthy
     fun prep (x,y,i) = 
       (@{thm ex_post_efficient_aux} OF [wf_raw_thm, def_thm])
@@ -194,11 +194,18 @@ fun prepare_ex_post_conditions sds (info : info) lthy =
     map prep losers
   end
 
-fun prepare_sdeff_conditions sds (info : info) lthy =
+val prepare_find_ex_post_conditions = 
+  gen_prepare_ex_post_conditions pareto_losers
+
+fun prepare_ex_post_conditions xs =
+  gen_prepare_ex_post_conditions 
+    (fn p => map_filter (fn (p', x) => if p = p' then find_pareto_witness p x else NONE) xs)
+
+fun gen_prepare_sdeff_conditions find_supports sds (info : info) lthy =
   let
     val {raw = p, wf_raw_thm, def_thm, ...} = info
     val altT = altT p
-    val supports = find_minimal_inefficient_supports p
+    val supports = find_supports p
     val cterm = Thm.cterm_of lthy
     fun prep (supp,lott,i) = 
       let
@@ -215,6 +222,15 @@ fun prepare_sdeff_conditions sds (info : info) lthy =
   in
     map prep supports
   end
+
+val prepare_find_sdeff_conditions = 
+  gen_prepare_sdeff_conditions find_minimal_inefficient_supports
+
+fun prepare_sdeff_conditions_from_wits ss = 
+  gen_prepare_sdeff_conditions 
+    (fn p => map_filter (
+      fn (p', x, SOME y) => if p = p' then SOME (mk_support_witness p (x,y)) else NONE
+        | _ => NONE) ss)
 
 fun gen_derive_support_conditions providers sds_thms ps lthy =
   let
@@ -279,11 +295,64 @@ fun gen_derive_support_conditions_cmd providers wf_thms ts lthy =
   gen_derive_support_conditions providers wf_thms (map (Syntax.read_term lthy) ts) lthy
 
 val derive_support_conditions_cmd = 
-  gen_derive_support_conditions_cmd [prepare_ex_post_conditions, prepare_sdeff_conditions]
+  gen_derive_support_conditions_cmd [prepare_find_ex_post_conditions, prepare_find_sdeff_conditions]
+
+val derive_ex_post_conditions_cmd =
+  gen_derive_support_conditions_cmd [prepare_find_ex_post_conditions]
+
+fun pretty_rat r =
+  case MyRat.to_quotient r of
+    (x, 1) => Pretty.str (Int.toString x)
+  | (x, y) => Pretty.strs [Int.toString x, "/", Int.toString y]
+
+fun find_inefficient_supports p =
+  map (fn (x,_,_) => ([x], NONE)) (pareto_losers p) @
+  map (fn (x,y,_) => (x, SOME y)) (find_minimal_inefficient_supports p)
+
+fun find_sd_inefficient_supports_cmd ts lthy =
+  let
+    val ps = ts |> map (Syntax.read_term lthy #> (fn p => get_info p lthy))
+    fun pretty_lott lott =
+      Pretty.list "[" "]" 
+        (map (fn (x,y) => Pretty.block 
+          [Syntax.pretty_term lthy x, Pretty.str ":", Pretty.brk 1, pretty_rat y]) lott)
+    fun pretty (p, supp, lott) =
+      Pretty.block ([
+        Syntax.pretty_term lthy p, Pretty.brk 1,
+        Pretty.list "[" "]" (map (Syntax.pretty_term lthy) supp)] @
+        the_default [] (Option.map (fn x => [Pretty.brk 1, pretty_lott x]) lott))
+  in
+    maps (fn p => (map (fn (x,y) => (#term p,x,y)) 
+      (find_inefficient_supports (#raw p)))) ps
+    |> map (single o pretty)
+    |> Library.separate [Pretty.brk 1, Pretty.keyword2 "and", Pretty.brk 1]
+    |> (fn xs => [Pretty.keyword1 "prove_inefficient_supports", Pretty.fbrk] :: xs)
+    |> flat
+    |> Pretty.block
+    |> Pretty.string_of
+    |> Output.information o Active.sendback_markup []
+  end
+
+fun prove_sd_inefficient_supports_cmd thm xs lthy =
+  let
+    val ts = map (fst o fst) xs
+    val read = Syntax.read_term lthy
+    val ts' = map read ts
+    val ps = map (fn t => #raw (get_info t lthy)) ts'
+    val supps = map (map read o snd o fst) xs
+    val lotts = map (Option.map (map (apfst read)) o snd) xs
+  in
+    gen_derive_support_conditions_cmd 
+      [prepare_sdeff_conditions_from_wits 
+         (map_filter (fn ((_, [_]), _) => NONE | ((x,y),z) => SOME (x,y,z)) (ps ~~ supps ~~ lotts)),
+       prepare_ex_post_conditions 
+         (map_filter (fn (p, [x]) => SOME (p,x) | _ => NONE) (ps ~~ supps))]
+      thm ts lthy
+  end
 
 val _ =
   Outer_Syntax.local_theory_to_proof @{command_keyword derive_support_conditions}
-    "automatically conditions for the support of preference profiles"
+    "automatically derive conditions for the support of preference profiles"
     (optional_thms_parser -- Scan.repeat1 Parse.term >> 
       (fn (thms, ts) => fn ctxt =>
          let
@@ -291,6 +360,49 @@ val _ =
          in
            derive_support_conditions_cmd thms ts ctxt
          end));
+
+val _ =
+  Outer_Syntax.local_theory_to_proof @{command_keyword derive_ex_post_conditions}
+    "automatically derive zero-ness conditions for the Pareto losers"
+    (optional_thm_parser -- Scan.repeat1 Parse.term >> 
+      (fn (thm, ts) => fn ctxt =>
+         let
+           val thm = Option.map (Proof_Context.get_fact ctxt o fst) thm
+         in
+           derive_support_conditions_cmd thm ts ctxt
+         end));
+
+
+val parse_rat =
+  (Parse.int -- Scan.optional (Args.$$$ "/" |-- Parse.int) 1) >> MyRat.of_quotient
+
+val parse_support = Args.bracks (Parse.list1 Parse.term)
+
+val parse_lottery = Args.bracks (Parse.list1 (Parse.term --| Args.colon -- parse_rat))
+
+val _ =
+  Outer_Syntax.local_theory @{command_keyword find_inefficient_supports}
+    "automatically find SD-inefficient supports"
+    (Scan.repeat1 Parse.term >> (* TODO: is local_theory the right approach here? *)
+      (fn ts => fn ctxt => 
+         let
+           val _ = find_sd_inefficient_supports_cmd ts ctxt
+         in
+           ctxt
+         end));
+  
+val _ =
+  Outer_Syntax.local_theory_to_proof @{command_keyword prove_inefficient_supports}
+    "prove SD-inefficient supports using a witness lottery"
+    (optional_thms_parser -- Parse.and_list1 (Parse.term -- parse_support -- Scan.option parse_lottery) >> 
+      (fn (thms, ts) => fn ctxt =>
+         let
+           val thms = Option.map (maps (Proof_Context.get_fact ctxt o fst)) thms
+         in
+           prove_sd_inefficient_supports_cmd thms ts ctxt
+         end));
+
+
 
 
 (* TODO: Move *)

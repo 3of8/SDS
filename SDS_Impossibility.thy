@@ -60,17 +60,27 @@ where R1  = A1: [c, d], [a, b]    A2: [b, d], a, c      A3: a, b, [c, d]      A4
   and R47 = A1: [a, b], [c, d]    A2: [a, d], c, b      A3: d, c, [a, b]      A4: c, [a, b], d
   by (simp_all add: agents alts)
 
-          
 derive_orbit_equations (an_sds)
   R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15 R16 R17 R18 R19 R20
   R21 R22 R23 R24 R25 R26 R27 R28 R29 R30 R31 R32 R33 R34 R35 R36 R37 R38 R39 R40
   R41 R42 R43 R44 R45 R46 R47
   by simp_all
 
-derive_support_conditions (ex_post_efficient_sds sd_efficient_sds)
-  R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15 R16 R17 R18 R19 R20
-  R21 R22 R23 R24 R25 R26 R27 R28 R29 R30 R31 R32 R33 R34 R35 R36 R37 R38 R39 R40
-  R41 R42 R43 R44 R45 R46 R47
+prove_inefficient_supports (ex_post_efficient_sds sd_efficient_sds)
+  R3 [b] and R4 [b] and R5 [b] and R7 [b] and R8 [b] and
+  R9 [b] and R11 [b] and R12 [b] and R14 [b] and R16 [b]
+  and R17 [b] and R18 [b] and R21 [b] and R22 [b] and
+  R23 [b] and R30 [b] and R32 [b] and R33 [b] and R35 [b]
+  and R40 [b] and R41 [b] and R43 [b] and R44 [b] and R47 [b]
+  and R10 [c, b] [a: 1 / 2, b: 0, c: 0, d: 1 / 2] and
+  R15 [c, b] [a: 1 / 2, b: 0, c: 0, d: 1 / 2] and
+  R19 [c, b] [a: 1 / 2, b: 0, c: 0, d: 1 / 2] and
+  R25 [b, c] [c: 0, d: 1 / 2, a: 1 / 2, b: 0] and
+  R26 [c, b] [b: 0, d: 1 / 2, a: 1 / 2, c: 0] and
+  R27 [c, b] [a: 1 / 2, b: 0, c: 0, d: 1 / 2] and
+  R28 [b, c] [c: 0, d: 1 / 2, a: 1 / 2, b: 0] and
+  R29 [b, c] [a: 1 / 2, c: 0, d: 1 / 2, b: 0] and
+  R39 [b, c] [a: 1 / 2, c: 0, d: 1 / 2, b: 0]
   by (simp_all add: agent_iff alt_iff)
 
 derive_strategyproofness_conditions (strategyproof_an_sds)

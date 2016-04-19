@@ -3,6 +3,9 @@ imports Preference_Profile_Cmd
 keywords 
   "derive_orbit_equations"
   "derive_support_conditions" 
+  "derive_ex_post_conditions"
+  "find_inefficient_supports"
+  "prove_inefficient_supports"
   "derive_strategyproofness_conditions" :: thy_goal
 begin
 

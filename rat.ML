@@ -2,6 +2,8 @@ signature MYRAT =
 sig
   type rat
   
+  val zero : rat
+  val one : rat
   val of_quotient : int * int -> rat
   val to_quotient  : rat -> int * int
   val from_int : int -> rat
@@ -39,6 +41,9 @@ structure MyRat : MYRAT =
 struct
 
 datatype rat = Rat of int * int;
+
+val zero = Rat (0, 1)
+val one = Rat (1, 1)
 
 fun of_quotient (_, 0) = raise Div
   | of_quotient (a, b) = 
