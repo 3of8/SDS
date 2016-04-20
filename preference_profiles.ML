@@ -32,6 +32,7 @@ val ranking : prefs -> term * term -> bool
 val strict_ranking : prefs -> term * term -> bool
 val pareto : profile -> term * term -> bool
 val strict_pareto : profile -> term * term -> bool
+val relation_of_prefs : prefs -> (term * term) list
 
 val probability : lottery -> term list -> MyRat.rat
 val stochastic_dominance : prefs -> lottery * lottery -> bool
@@ -75,13 +76,15 @@ val find_inefficiency_witness : profile -> support -> (lottery * term) option
    (non-singleton because singleton inefficient supports are simply Pareto losers *)
 val find_minimal_inefficient_supports : profile -> (support * lottery * term) list
 
+val manipulation_distance : (prefs * prefs) -> int
+
 (* Finds all ways for one voter to manipulate the first given profile to obtain a profile
    that is equivalent to the second profile modulo anonymity and neutrality.
    Returns a witness for each possible manipulation, consisting of the manipulating voter, 
    the voter with whose preferences her preferences need to be replaced, 
    and the permutation of alternatives.
  *)
-val find_manipulations : profile * profile -> (term * term * term permutation) list
+val find_manipulations : profile * profile -> (term * term * int * term permutation) list
 
 end
 
@@ -429,15 +432,42 @@ fun manipulations xs y =
 val bind = Seq.maps
 fun bind' f x = bind f (Seq.of_list x)
 
+val relation_of_prefs =
+  let
+    fun go acc [] = acc
+      | go acc (xs::xss) =
+          go (maps (fn x => map (pair x) (flat (xs::xss))) xs @ acc) xss
+  in
+    go []
+  end
+
+fun manipulation_distance (prefs1, prefs2) =
+  let
+    val r1 = relation_of_prefs prefs1
+    val r2 = relation_of_prefs prefs2
+    val subtract' = subtract (eq_pair op aconv op aconv)
+  in
+    length (subtract' r1 r2) + length (subtract' r2 r1)
+  end
+
 fun find_manipulations (p1, p2) =
   let
     val alts = alts_of_profile p1
+    fun prefs p i = the (AList.lookup op aconv p i)
   in
     permutations op aconv alts |> bind (fn sigma =>
       p2 |> bind' (fn (j, prefs) =>
         Seq.of_list (manipulations (permute_profile sigma p1) prefs)
         |> Seq.filter (fn (_, _, p1') => equiv_profile_anonymity (p1', p2))
         |> Seq.map (fn (a, _, _) => (a, j, sigma))))
+        |> Seq.map_filter (fn (i, j, sigma) =>
+             let
+               val (prefs1, prefs2) = (prefs p1 i, prefs p2 j)
+               val prefs1 = map (map (apply_permutation op aconv sigma)) prefs1
+               val dist = manipulation_distance (prefs1, prefs2)
+             in
+               SOME (i, j, dist, sigma)
+             end)
     |> Seq.list_of
   end
 

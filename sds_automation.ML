@@ -312,10 +312,10 @@ fun find_inefficient_supports p =
 fun find_sd_inefficient_supports_cmd ts lthy =
   let
     val ps = ts |> map (Syntax.read_term lthy #> (fn p => get_info p lthy))
-    fun pretty_lott lott =
+    fun pretty_lott lott = Pretty.block [Pretty.str "witness:", Pretty.brk 1,
       Pretty.list "[" "]" 
         (map (fn (x,y) => Pretty.block 
-          [Syntax.pretty_term lthy x, Pretty.str ":", Pretty.brk 1, pretty_rat y]) lott)
+          [Syntax.pretty_term lthy x, Pretty.str ":", Pretty.brk 1, pretty_rat y]) lott)]
     fun pretty (p, supp, lott) =
       Pretty.block ([
         Syntax.pretty_term lthy p, Pretty.brk 1,
@@ -325,7 +325,7 @@ fun find_sd_inefficient_supports_cmd ts lthy =
     maps (fn p => (map (fn (x,y) => (#term p,x,y)) 
       (find_inefficient_supports (#raw p)))) ps
     |> map (single o pretty)
-    |> Library.separate [Pretty.brk 1, Pretty.keyword2 "and", Pretty.brk 1]
+    |> Library.separate [Pretty.keyword2 " and", Pretty.brk 1]
     |> (fn xs => [Pretty.keyword1 "prove_inefficient_supports", Pretty.fbrk] :: xs)
     |> flat
     |> Pretty.block
@@ -394,7 +394,8 @@ val _ =
 val _ =
   Outer_Syntax.local_theory_to_proof @{command_keyword prove_inefficient_supports}
     "prove SD-inefficient supports using a witness lottery"
-    (optional_thms_parser -- Parse.and_list1 (Parse.term -- parse_support -- Scan.option parse_lottery) >> 
+    (optional_thms_parser -- Parse.and_list1 (Parse.term -- parse_support -- 
+       Scan.option (Args.$$$ "witness" |-- Args.colon |-- parse_lottery)) >> 
       (fn (thms, ts) => fn ctxt =>
          let
            val thms = Option.map (maps (Proof_Context.get_fact ctxt o fst)) thms
@@ -426,16 +427,21 @@ fun combine_all f xs =
 
 
 
-fun prepare_strategyproofness_intro_thms ctxt sds_san_thm (ps : info list) =
+fun prepare_strategyproofness_intro_thms ctxt dist_limit sds_san_thm (ps : info list) =
   let
     val altT = ps |> hd |> #raw |> altT
     val manipulations = 
       combine_all (fn (p1, p2) => (p1, p2, find_manipulations (#raw p1, #raw p2))) ps
+    val manipulations =
+      case dist_limit of
+        NONE => manipulations
+      | SOME l =>
+          map (fn (p1, p2, ms) => (p1, p2, filter (fn x => #3 x <= l) ms)) manipulations
     fun mk_binding (p1, p2) =
       Binding.qualify true 
         (Binding.name_of (#binding p1) ^ "_" ^ Binding.name_of (#binding p2)) 
         (Binding.name "strategyproofness")
-    fun mk_intro (p1, p2) (i, j, sigma) = 
+    fun mk_intro (p1, p2) (i, j, _, sigma) = 
       let
         val {wf_raw_thm = wf_raw_thm1, def_thm = def_thm1, raw = raw1, ...} = p1
         val {wf_raw_thm = wf_raw_thm2, def_thm = def_thm2, ...} = p2
@@ -453,7 +459,7 @@ fun prepare_strategyproofness_intro_thms ctxt sds_san_thm (ps : info list) =
       : (binding * thm list) list
   end
 
-fun gen_derive_strategyproofness_conditions lthy sds_san_thm ps =
+fun gen_derive_strategyproofness_conditions lthy dist_limit sds_san_thm ps =
   let
     val lthy0 = lthy
     val infos = map (fn p => get_info p lthy) ps
@@ -477,7 +483,7 @@ fun gen_derive_strategyproofness_conditions lthy sds_san_thm ps =
             (sds, sds_san_thm, lthy)
           end
 
-    val intros = prepare_strategyproofness_intro_thms lthy sds_san_thm infos
+    val intros = prepare_strategyproofness_intro_thms lthy dist_limit sds_san_thm infos
     val goals = map (map (fn x => (Thm.concl_of x, [])) o snd) intros
     val bindings = map fst intros
     val lthy = lthy addsimps 
@@ -517,18 +523,19 @@ fun gen_derive_strategyproofness_conditions lthy sds_san_thm ps =
     |> Proof.refine_singleton before_proof
   end
 
-fun derive_strategyproofness_conditions_cmd sds_san_thm ps lthy =
-  gen_derive_strategyproofness_conditions lthy sds_san_thm (map (Syntax.read_term lthy) ps)
+fun derive_strategyproofness_conditions_cmd dist_limit sds_san_thm ps lthy =
+  gen_derive_strategyproofness_conditions lthy dist_limit sds_san_thm (map (Syntax.read_term lthy) ps)
 
 val _ =
   Outer_Syntax.local_theory_to_proof @{command_keyword derive_strategyproofness_conditions}
     "automatically derives the conditions arising from strategy-proofness for preference profiles"
-    ((optional_thm_parser -- Scan.repeat1 Parse.term) >> 
-     (fn (wf_thm, ps) => fn ctxt => 
+    ((optional_thm_parser -- Scan.option (Args.$$$ "distance" |-- Args.colon |-- Parse.int) 
+        -- Scan.repeat1 Parse.term) >> 
+     (fn ((wf_thm, dist_limit), ps) => fn ctxt => 
         let
           val wf_thm = Option.map (hd o Proof_Context.get_fact ctxt o fst) wf_thm
         in
-          derive_strategyproofness_conditions_cmd wf_thm ps ctxt
+          derive_strategyproofness_conditions_cmd dist_limit wf_thm ps ctxt
         end))
 
 
