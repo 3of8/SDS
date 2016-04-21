@@ -578,7 +578,7 @@ qed
 lemma absurd: False
   using R31 R45_R31.strategyproofness(2) by simp
 
-(*
+
 ML_val \<open>
 let
 val thms = @{thms
@@ -588,15 +588,15 @@ R2_R1.strategyproofness(1)
 R2_R38.strategyproofness(1)
 R4_R8.strategyproofness(1)
 R4_R18.strategyproofness(1)
-R4_R47.strategyproofness(2)
-R5_R7.strategyproofness(2)
+R4_R47.strategyproofness(1)
+R5_R7.strategyproofness(1)
 R5_R10.strategyproofness(1)
-R5_R17.strategyproofness(2)
-R6_R19.strategyproofness(2)
+R5_R17.strategyproofness(1)
+R6_R19.strategyproofness(1)
 R6_R42.strategyproofness(1)
 R7_R43.strategyproofness(1)
 R8_R26.strategyproofness(2)
-R9_R18.strategyproofness(2)
+R9_R18.strategyproofness(1)
 R9_R35.strategyproofness(1)
 R9_R40.strategyproofness(1)
 R10_R12.strategyproofness(1)
@@ -604,22 +604,22 @@ R10_R15.strategyproofness(1)
 R10_R19.strategyproofness(1)
 R10_R36.strategyproofness(1)
 R12_R10.strategyproofness(1)
-R12_R16.strategyproofness(2)
+R12_R16.strategyproofness(1)
 R12_R44.strategyproofness(1)
 R13_R15.strategyproofness(1)
 R13_R27.strategyproofness(1)
-R14_R9.strategyproofness(2)
+R14_R9.strategyproofness(1)
 R14_R16.strategyproofness(1)
 R14_R34.strategyproofness(1)
 R15_R5.strategyproofness(1)
 R15_R7.strategyproofness(1)
 R15_R10.strategyproofness(1)
 R15_R13.strategyproofness(1)
-R17_R3.strategyproofness(2)
-R17_R5.strategyproofness(2)
-R17_R7.strategyproofness(2)
-R17_R11.strategyproofness(2)
-R18_R9.strategyproofness(2)
+R17_R3.strategyproofness(1)
+R17_R5.strategyproofness(1)
+R17_R7.strategyproofness(1)
+R17_R11.strategyproofness(1)
+R18_R9.strategyproofness(1)
 R19_R1.strategyproofness(1)
 R19_R10.strategyproofness(1)
 R19_R27.strategyproofness(1)
@@ -627,9 +627,9 @@ R20_R21.strategyproofness(1)
 R21_R35.strategyproofness(1)
 R22_R29.strategyproofness(1)
 R22_R32.strategyproofness(1)
-R23_R12.strategyproofness(2)
+R23_R12.strategyproofness(1)
 R23_R18.strategyproofness(1)
-R23_R19.strategyproofness(2)
+R23_R19.strategyproofness(1)
 R24_R34.strategyproofness(1)
 R25_R26.strategyproofness(1)
 R25_R36.strategyproofness(1)
@@ -666,7 +666,8 @@ R44_R40.strategyproofness(1)
 R45_R31.strategyproofness(2)
 R46_R20.strategyproofness(1)
 R46_R37.strategyproofness(1)
-R47_R30.strategyproofness(1)};
+R47_R30.strategyproofness(1)
+};
 in
  thms
  |> map (Pretty.quote o Pretty.str o Pretty.unformatted_string_of o Syntax.pretty_term @{context} o Thm.prop_of)
@@ -675,7 +676,7 @@ in
  |> Pretty.string_of
  |> writeln
 end
-\<close>*)
+\<close>
 
 
 
