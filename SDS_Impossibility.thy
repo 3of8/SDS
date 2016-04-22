@@ -60,10 +60,14 @@ where R1  = A1: [c, d], [a, b]    A2: [b, d], a, c      A3: a, b, [c, d]      A4
   and R47 = A1: [a, b], [c, d]    A2: [a, d], c, b      A3: d, c, [a, b]      A4: c, [a, b], d
   by (simp_all add: agents alts)
 
+ML_val \<open>
+open Preference_Profiles_Cmd;
+Preference_Profiles.find_an_automorphisms
+(get_info @{term "R45"} @{context} |> #raw)
+\<close>
+
 derive_orbit_equations (an_sds)
-  R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12 R13 R14 R15 R16 R17 R18 R19 R20
-  R21 R22 R23 R24 R25 R26 R27 R28 R29 R30 R31 R32 R33 R34 R35 R36 R37 R38 R39 R40
-  R41 R42 R43 R44 R45 R46 R47
+  R10 R26 R27 R28 R29 R43 R45
   by simp_all
 
 prove_inefficient_supports (ex_post_efficient_sds sd_efficient_sds)

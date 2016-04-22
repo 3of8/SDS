@@ -54,11 +54,8 @@ proof -
   qed (insert nonneg finite_supp, simp_all)
   with nonneg have pmf_q: "pmf q x = pmf p x + \<epsilon> * (pmf q' x - pmf p' x)" for x
     unfolding q_def by (intro pmf_embed_pmf) simp_all
-  with support have "set_pmf q \<subseteq> supp" 
+  with support have support_q: "set_pmf q \<subseteq> supp" 
     unfolding supp_def by (auto simp: set_pmf_eq)
-  
-  with lotteries support q'(1) have support_q: "set_pmf q \<subseteq> supp"
-    by (auto simp add: lotteries_on_def supp_def)
   with lotteries support q'(1) have q_wf: "q \<in> lotteries_on alts"
     by (auto simp add: lotteries_on_def supp_def)
   
