@@ -883,6 +883,47 @@ proof -
   thus ?thesis by (simp add: weak_ranking_complete_preorder)
 qed
 
+definition ranking_index :: "'a \<Rightarrow> nat" where
+  "ranking_index x = find_index (\<lambda>A. x \<in> A) (weak_ranking le)"
+
+lemma nth_ranking_index:
+  assumes "x \<in> carrier"
+  shows   "ranking_index x < length (weak_ranking le)" "x \<in> weak_ranking le ! ranking_index x"
+proof -
+  from assms weak_ranking_Union show "ranking_index x < length (weak_ranking le)"
+     unfolding ranking_index_def by (auto simp add: find_index_less_size_conv)
+  thus "x \<in> weak_ranking le ! ranking_index x" unfolding ranking_index_def
+    by (rule nth_find_index)
+qed
+
+lemma ranking_index_eqI:
+  "i < length (weak_ranking le) \<Longrightarrow> x \<in> weak_ranking le ! i \<Longrightarrow> ranking_index x = i"
+  using weak_ranking_index_unique'[of "weak_ranking le" i x]
+  by (simp add: ranking_index_def weak_ranking_complete_preorder)
+
+lemma ranking_index_le_iff [simp]:
+  assumes "x \<in> carrier" "y \<in> carrier"
+  shows   "ranking_index x \<ge> ranking_index y \<longleftrightarrow> le x y"
+proof -
+  have "le x y \<longleftrightarrow> of_weak_ranking (weak_ranking le) x y"
+    by (simp add: weak_ranking_complete_preorder)
+  also have "\<dots> \<longleftrightarrow> ranking_index x \<ge> ranking_index y"
+  proof
+    assume "ranking_index x \<ge> ranking_index y"
+    thus "of_weak_ranking (weak_ranking le) x y"
+      by (rule of_weak_ranking.intros) (simp_all add: nth_ranking_index assms)
+  next
+    assume "of_weak_ranking (weak_ranking le) x y"
+    then obtain i j where 
+      "i \<le> j" "i < length (weak_ranking le)" "j < length (weak_ranking le)"
+      "x \<in> weak_ranking le ! j" "y \<in> weak_ranking le ! i"
+      by (elim of_weak_ranking.cases) blast
+    with ranking_index_eqI[of i] ranking_index_eqI[of j]
+      show "ranking_index x \<ge> ranking_index y" by simp
+  qed
+  finally show ?thesis ..
+qed
+
 end
 
 lemmas of_weak_ranking_weak_ranking = 

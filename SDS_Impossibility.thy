@@ -60,12 +60,6 @@ where R1  = A1: [c, d], [a, b]    A2: [b, d], a, c      A3: a, b, [c, d]      A4
   and R47 = A1: [a, b], [c, d]    A2: [a, d], c, b      A3: d, c, [a, b]      A4: c, [a, b], d
   by (simp_all add: agents alts)
 
-ML_val \<open>
-open Preference_Profiles_Cmd;
-Preference_Profiles.find_an_automorphisms
-(get_info @{term "R45"} @{context} |> #raw)
-\<close>
-
 derive_orbit_equations (an_sds)
   R10 R26 R27 R28 R29 R43 R45
   by simp_all

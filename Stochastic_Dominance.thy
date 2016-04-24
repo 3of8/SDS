@@ -1,4 +1,4 @@
-section \<open>Stochastic Dominance\<close>
+*section \<open>Stochastic Dominance\<close>
 
 theory Stochastic_Dominance
 imports 
@@ -353,14 +353,19 @@ subsection \<open>Definition of von Neumann--Morgenstern utility functions\<clos
 
 locale vnm_utility = finite_complete_preorder_on +
   fixes u :: "'a \<Rightarrow> real"
-  assumes utility_nonneg: "x \<in> carrier \<Longrightarrow> u x \<ge> 0"
   assumes utility_le_iff: "x \<in> carrier \<Longrightarrow> y \<in> carrier \<Longrightarrow> u x \<le> u y \<longleftrightarrow> x \<preceq>[le] y"
 begin
+
+lemma utility_le: "x \<preceq>[le] y \<Longrightarrow> u x \<le> u y"
+  using not_outside[of x y] utility_le_iff by simp
 
 lemma utility_less_iff:
   "x \<in> carrier \<Longrightarrow> y \<in> carrier \<Longrightarrow> u x < u y \<longleftrightarrow> x \<prec>[le] y"
   using utility_le_iff[of x y] utility_le_iff[of y x] 
   by (auto simp: strongly_preferred_def)
+
+lemma utility_less: "x \<prec>[le] y \<Longrightarrow> u x < u y"
+  using not_outside[of x y] utility_less_iff by (simp add: strongly_preferred_def)
 
 text \<open>
   The following lemma allows us to compute the expected utility by summing 
@@ -398,6 +403,64 @@ proof -
   finally show ?thesis .
 qed
 
+lemma scaled: "c > 0 \<Longrightarrow> vnm_utility carrier le (\<lambda>x. c * u x)"
+  by unfold_locales (insert utility_le_iff, auto)
+
+lemma add_right: 
+  assumes "\<And>x y. le x y \<Longrightarrow> f x \<le> f y"
+  shows   "vnm_utility carrier le (\<lambda>x. u x + f x)"
+proof
+  fix x y assume xy: "x \<in> carrier" "y \<in> carrier"
+  from assms[of x y] utility_le_iff[OF xy] assms[of y x] utility_le_iff[OF xy(2,1)] 
+    show "(u x + f x \<le> u y + f y) = le x y" by auto
+qed
+
+lemma add_left: 
+  "(\<And>x y. le x y \<Longrightarrow> f x \<le> f y) \<Longrightarrow> vnm_utility carrier le (\<lambda>x. f x + u x)"
+  by (subst add.commute) (rule add_right)
+
+lemma diff:
+  assumes A: "\<And>x y. le x y \<Longrightarrow> le y x \<Longrightarrow> f x = f y"
+  shows "\<exists>\<epsilon>>0. vnm_utility carrier le (\<lambda>x. u x - \<epsilon> * f x)"
+proof -
+  let ?A = "{(u y - u x) / (f y - f x) |x y. x \<prec>[le] y \<and> f x < f y}"
+  have "?A = (\<lambda>(x,y). (u y - u x) / (f y - f x)) ` {(x,y) |x y. x \<prec>[le] y \<and> f x < f y}" by auto
+  also have "finite {(x,y) |x y. x \<prec>[le] y \<and> f x < f y}"
+    by (rule finite_subset[of _ "carrier \<times> carrier"]) 
+       (insert not_outside, auto simp: strongly_preferred_def)
+  hence "finite ((\<lambda>(x,y). (u y - u x) / (f y - f x)) ` {(x,y) |x y. x \<prec>[le] y \<and> f x < f y})"
+    by simp
+  finally have finite: "finite ?A" .
+
+  def \<epsilon> \<equiv> "Min (insert 1 ?A) / 2"
+  from finite have "Min (insert 1 ?A) > 0"
+    by (intro Min_grI) (auto intro!: divide_pos_pos simp: utility_less)
+  hence \<epsilon>: "\<epsilon> > 0" unfolding \<epsilon>_def by simp
+
+  have mono: "u x - \<epsilon> * f x < u y - \<epsilon> * f y" if xy: "x \<prec>[le] y" for x y
+  proof (cases "f x < f y")
+    assume less: "f x < f y"
+    from \<epsilon> have "\<epsilon> < Min (insert 1 ?A)" unfolding \<epsilon>_def by linarith
+    also from less xy finite have "Min (insert 1 ?A) \<le> (u y - u x) / (f y - f x)" unfolding \<epsilon>_def
+      by (intro Min_le) auto
+    finally show ?thesis using less by (simp add: field_simps)
+  next
+    assume "\<not>f x < f y"
+    with utility_less[OF xy] \<epsilon> show ?thesis 
+      by (simp add: algebra_simps not_less add_less_le_mono)
+  qed
+  have eq: "u x - \<epsilon> * f x = u y - \<epsilon> * f y" if xy: "x \<preceq>[le] y" "y \<preceq>[le] x" for x y
+    using xy[THEN utility_le] A[OF xy] by simp
+  have "vnm_utility carrier le (\<lambda>x. u x - \<epsilon> * f x)"
+  proof
+    fix x y assume xy: "x \<in> carrier" "y \<in> carrier"
+    show "(u x - \<epsilon> * f x \<le> u y - \<epsilon> * f y) \<longleftrightarrow> le x y"
+      using complete[OF xy] mono[of x y] mono[of y x] eq[of x y]
+      by (cases "le x y"; cases "le y x") (auto simp: strongly_preferred_def)
+  qed
+  from \<epsilon> this show ?thesis by blast
+qed
+
 end
 
 
@@ -412,6 +475,16 @@ context finite_complete_preorder_on
 begin
 
 abbreviation "is_vnm_utility \<equiv> vnm_utility carrier le"
+
+lemma utility_ranking_index:
+  "is_vnm_utility (\<lambda>x. real (length (weak_ranking le) - ranking_index x))"
+proof
+  fix x y assume xy: "x \<in> carrier" "y \<in> carrier"
+  with this[THEN nth_ranking_index(1)] this[THEN nth_ranking_index(2)]
+    show "(real (length (weak_ranking le) - ranking_index x)
+            \<le> real (length (weak_ranking le) - ranking_index y)) \<longleftrightarrow> le x y"
+    by (simp add: le_diff_iff')
+qed
 
 (* 
   TODO: one direction could probably be generalised to weakly consistent
@@ -539,7 +612,7 @@ next
 
   {
     fix x assume x: "x \<in> carrier"
-    let ?idx = "\<lambda>y. length xs - find_index (op \<in> y) xs"
+    let ?idx = "\<lambda>y. length xs - ranking_index y"
     have preferred_subset_carrier: "{y. le x y} \<subseteq> carrier"
       using not_outside x by auto
     have "measure_pmf.prob p {y. le x y} / real (length xs) \<le>
@@ -547,32 +620,12 @@ next
     proof (rule field_le_epsilon)
       fix \<epsilon> :: real assume \<epsilon>: "\<epsilon> > 0"
       def u \<equiv> "\<lambda>y. indicator {y. y \<succeq>[le] x} y + \<epsilon> * ?idx y"
-      have is_utility: "is_vnm_utility u"
-      proof (unfold_locales; safe?)
-        fix y z assume yz: "y \<in> carrier" "z \<in> carrier" "le y z"
-        hence "indicator {y. y \<succeq>[le] x} y \<le> (indicator {y. y \<succeq>[le] x} z :: real)"
-          by (auto intro: trans simp: indicator_def split: if_splits)
-        moreover from yz 
-          have "?idx y \<le> ?idx z"
-          by (simp_all add: le of_weak_ranking_altdef carrier)
-        ultimately show "u y \<le> u z" unfolding u_def using \<epsilon>
-          by (intro add_mono mult_left_mono) simp_all
-      next
-        fix y z assume yz: "y \<in> carrier" "z \<in> carrier" "u y \<le> u z"
-        consider "le x y \<longleftrightarrow> le x z" | "le x y" "\<not>le x z" | "le y x" "le x z"
-          using yz complete[of x y] complete[of x z] x by blast
-        thus "le y z"
-        proof cases
-          assume "le x y \<longleftrightarrow> le x z"
-          with \<epsilon> yz carrier show ?thesis unfolding u_def
-            by (auto simp: indicator_def le of_weak_ranking_altdef le_diff_iff' find_index_le_size)
-        next
-          assume "le x y" "\<not>le x z"
-          with yz have "\<epsilon> * ?idx y \<le> \<epsilon> * ?idx z" by (simp add: u_def)
-          with \<epsilon> yz carrier show ?thesis
-            by (auto simp: le of_weak_ranking_altdef le_diff_iff' find_index_le_size)
-        qed (blast intro: trans)
-      qed (insert \<epsilon>, simp_all add: u_def)
+      have is_utility: "is_vnm_utility u" unfolding u_def xs_def
+      proof (intro vnm_utility.add_left vnm_utility.scaled utility_ranking_index)
+        fix y z assume "le y z"
+        thus "indicator {y. y \<succeq>[le] x} y \<le> (indicator {y. y \<succeq>[le] x} z :: real)"
+          by (auto intro: trans simp: indicator_def split: if_splits)        
+      qed fact+
 
       have "(\<Sum>y|le x y. pmf p y) \<le>
               (\<Sum>y|le x y. pmf p y) + \<epsilon> * (\<Sum>y\<in>carrier. ?idx y * pmf p y)"
@@ -610,6 +663,47 @@ next
   }
   with assms show "p \<preceq>[SD(le)] q" unfolding SD_preorder preferred_alts_def by blast
 qed
+
+lemma not_strict_SD_iff:
+  assumes "p \<in> lotteries_on carrier" "q \<in> lotteries_on carrier"
+  shows   "\<not>(p \<prec>[SD(le)] q) \<longleftrightarrow> 
+             (\<exists>u. is_vnm_utility u \<and> measure_pmf.expectation q u \<le> measure_pmf.expectation p u)"
+proof
+  let ?E = "measure_pmf.expectation :: 'a pmf \<Rightarrow> _ \<Rightarrow> real"
+  assume "\<exists>u. is_vnm_utility u \<and> ?E p u \<ge> ?E q u"
+  then obtain u where u: "is_vnm_utility u" "?E p u \<ge> ?E q u" by blast
+  interpret u: vnm_utility carrier le u by fact
+
+  show "\<not> p \<prec>[SD le] q"
+  proof
+    assume less: "p \<prec>[SD le] q"
+    with assms have pq: "?E p u \<le> ?E q u" if "is_vnm_utility u" for u
+      using that by (auto simp: SD_iff_expected_utilities_le strongly_preferred_def)
+    with u have u_eq: "?E p u = ?E q u" by (intro antisym) simp_all
+    from less assms obtain u' where u': "is_vnm_utility u'" "?E p u' < ?E q u'" 
+      by (auto simp: SD_iff_expected_utilities_le strongly_preferred_def not_le)
+    interpret u': vnm_utility carrier le u' by fact
+    
+    have "\<exists>\<epsilon>>0. is_vnm_utility (\<lambda>x. u x - \<epsilon> * u' x)"
+      by (intro u.diff antisym u'.utility_le)
+    then guess \<epsilon> by (elim exE conjE) note \<epsilon> = this
+    def u'' \<equiv> "\<lambda>x. u x - \<epsilon> * u' x"
+    interpret u'': vnm_utility carrier le u'' unfolding u''_def by fact
+    have exp_u'': "?E p u'' = ?E p u - \<epsilon> * ?E p u'" if "p \<in> lotteries_on carrier" for p using that
+      by (subst (1 2 3) integral_measure_pmf[of carrier])
+         (auto simp: lotteries_on_def u''_def algebra_simps setsum_subtractf setsum_right_distrib)
+    from assms \<epsilon> have "?E p u'' > ?E q u''"
+      by (simp_all add: exp_u'' algebra_simps u_eq u')
+    with pq[OF u''.vnm_utility_axioms] show False by simp
+  qed
+qed (insert assms utility_ranking_index, 
+     auto simp: strongly_preferred_def SD_iff_expected_utilities_le not_le not_less intro: antisym)
+
+lemma strict_SD_iff:
+  assumes "p \<in> lotteries_on carrier" "q \<in> lotteries_on carrier"
+  shows   "(p \<prec>[SD(le)] q) \<longleftrightarrow> 
+             (\<forall>u. is_vnm_utility u \<longrightarrow> measure_pmf.expectation p u < measure_pmf.expectation q u)"
+  using not_strict_SD_iff[OF assms] by auto
 
 end
 
