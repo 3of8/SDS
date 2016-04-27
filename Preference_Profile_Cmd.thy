@@ -23,7 +23,7 @@ begin
 ML_file "preference_profiles.ML"
 
 
-context agenda
+context election
 begin
 
 lemma preferred_alts_prefs_from_table:
@@ -94,7 +94,7 @@ function favorites_prefs_from_table where
   by (metis list.exhaust old.prod.exhaust) auto
 termination by lexicographic_order
 
-lemma (in agenda) eval_favorites_prefs_from_table:
+lemma (in election) eval_favorites_prefs_from_table:
   assumes "prefs_from_table_wf agents alts xs"
   shows   "favorites_prefs_from_table xs i = 
              favorites (prefs_from_table xs) i"
@@ -127,19 +127,19 @@ lemma eval_prefs_from_table_aux:
   shows   "R i a b \<longleftrightarrow> prefs_from_table xs i a b"
           "a \<prec>[R i] b \<longleftrightarrow> prefs_from_table xs i a b \<and> \<not>prefs_from_table xs i b a"
           "anonymous_profile R = mset (map snd xs)"
-          "agenda agents alts \<Longrightarrow> i \<in> set (map fst xs) \<Longrightarrow> 
+          "election agents alts \<Longrightarrow> i \<in> set (map fst xs) \<Longrightarrow> 
              preferred_alts (R i) x = 
              of_weak_ranking_Collect_ge (rev (the (map_of xs i))) x"
-          "agenda agents alts \<Longrightarrow> i \<in> set (map fst xs) \<Longrightarrow>
+          "election agents alts \<Longrightarrow> i \<in> set (map fst xs) \<Longrightarrow>
              favorites R i = favorites_prefs_from_table xs i"
-          "agenda agents alts \<Longrightarrow> i \<in> set (map fst xs) \<Longrightarrow>
+          "election agents alts \<Longrightarrow> i \<in> set (map fst xs) \<Longrightarrow>
              favorite R i = the_elem (favorites_prefs_from_table xs i)"
-          "agenda agents alts \<Longrightarrow> 
+          "election agents alts \<Longrightarrow> 
              has_unique_favorites R \<longleftrightarrow> list_all (\<lambda>z. is_singleton (hd (snd z))) xs"
   using assms prefs_from_table_wfD[OF assms(2)]
   by (simp_all add: strongly_preferred_def favorite_def anonymise_prefs_from_table
-        agenda.preferred_alts_prefs_from_table agenda.eval_favorites_prefs_from_table
-        agenda.has_unique_favorites_prefs_from_table)
+        election.preferred_alts_prefs_from_table election.eval_favorites_prefs_from_table
+        election.has_unique_favorites_prefs_from_table)
 
 lemma pref_profile_from_tableI':
   assumes "R1 \<equiv> prefs_from_table xss" "prefs_from_table_wf agents alts xss"

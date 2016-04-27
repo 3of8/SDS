@@ -243,14 +243,14 @@ qed
 end
 
 lemma (in strategyproof_an_sds) strategyproof':
-  assumes wf: "is_pref_profile R" "complete_preorder_on alts Ri'" and i: "i \<in> agents"
+  assumes wf: "is_pref_profile R" "total_preorder_on alts Ri'" and i: "i \<in> agents"
   shows   "(\<exists>A\<in>pref_classes alts (R i). lottery_prob (sds (R(i := Ri'))) A <
                         lottery_prob (sds R) A) \<or>
            (\<forall>A\<in>pref_classes alts (R i). lottery_prob (sds (R(i := Ri'))) A =
                         lottery_prob (sds R) A)"
 proof -
   from wf(1) interpret R: pref_profile_wf agents alts R .
-  from i interpret complete_preorder_on alts "R i" by simp
+  from i interpret total_preorder_on alts "R i" by simp
   from assms have "\<not> manipulable_profile R i Ri'" by (intro strategyproof)
   moreover from wf i have "sds R \<in> lotteries" "sds (R(i := Ri')) \<in> lotteries"
     by (simp_all add: sds_wf)
@@ -275,7 +275,7 @@ lemma strategyproof_aux:
 proof -
   from sds interpret strategyproof_an_sds agents alts sds .
   let ?Ri' = "R2 j"
-  from wf j have wf': "is_pref_profile R1" "complete_preorder_on alts ?Ri'"
+  from wf j have wf': "is_pref_profile R1" "total_preorder_on alts ?Ri'"
     by (auto intro: pref_profile_from_tableI pref_profile_wf.prefs_wf'(1))
 
   from wf(1) i have "i \<in> set (map fst xss1)" by (simp add: prefs_from_table_wf_def)
@@ -339,10 +339,10 @@ proof
     by (simp add: image_Union [symmetric] permutes_image[OF perm'])
   ultimately have wf_xs': "is_weak_ranking xs'" "is_finite_weak_ranking xs'" "\<Union>set xs' = alts"
     by (simp_all add: is_finite_weak_ranking_def)
-  from this wf j have wf': "is_pref_profile R1" "complete_preorder_on alts Ri'" 
-                      "is_pref_profile R2" "finite_complete_preorder_on alts Ri'"
+  from this wf j have wf': "is_pref_profile R1" "total_preorder_on alts Ri'" 
+                      "is_pref_profile R2" "finite_total_preorder_on alts Ri'"
     unfolding Ri'_def by (auto intro: pref_profile_from_tableI pref_profile_wf.prefs_wf'(1)
-                                 complete_preorder_of_weak_ranking)
+                                 total_preorder_of_weak_ranking)
 
  interpret R1: pref_profile_wf agents alts R1 by fact
  interpret R2: pref_profile_wf agents alts R2 by fact

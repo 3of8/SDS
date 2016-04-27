@@ -57,8 +57,8 @@ lemma alt_iff: "x \<in> alts \<longleftrightarrow> x \<in> {a,b,c,d}"
 lemma mset_agents: "mset_set agents = {#A1, A2, A3, A4#}"
   by (simp add: agents)
 
-lemma complete_preorder_on_altsI [simp]:
-  "is_pref_profile R \<Longrightarrow> i \<in> agents \<Longrightarrow> complete_preorder_on alts (R i)"
+lemma total_preorder_on_altsI [simp]:
+  "is_pref_profile R \<Longrightarrow> i \<in> agents \<Longrightarrow> total_preorder_on alts (R i)"
   by (rule pref_profile_wf.prefs_wf')
 
 

@@ -71,33 +71,33 @@ end
 subsection \<open>Complete preorders\<close>
 
 text \<open>Complete preorders are preorders where any two elements are comparable.\<close>
-locale complete_preorder_on = preorder_on +
-  assumes complete: "x \<in> carrier \<Longrightarrow> y \<in> carrier \<Longrightarrow> le x y \<or> le y x"
+locale total_preorder_on = preorder_on +
+  assumes total: "x \<in> carrier \<Longrightarrow> y \<in> carrier \<Longrightarrow> le x y \<or> le y x"
 begin
 
-lemma complete': "\<not>le x y \<Longrightarrow> x \<in> carrier \<Longrightarrow> y \<in> carrier \<Longrightarrow> le y x"
-  using complete[of x y] by blast
+lemma total': "\<not>le x y \<Longrightarrow> x \<in> carrier \<Longrightarrow> y \<in> carrier \<Longrightarrow> le y x"
+  using total[of x y] by blast
 
-lemma complete_preorder_on_map:
-  "complete_preorder_on (f -` carrier) (map_relation f le)"
+lemma total_preorder_on_map:
+  "total_preorder_on (f -` carrier) (map_relation f le)"
 proof -
   interpret R': preorder_on "f -` carrier" "map_relation f le"
     using preorder_on_map[of f] .
-  show ?thesis by unfold_locales (simp add: map_relation_def complete)
+  show ?thesis by unfold_locales (simp add: map_relation_def total)
 qed
 
-lemma complete_preorder_on_restrict:
-  "complete_preorder_on (carrier \<inter> A) (restrict_relation A le)"
+lemma total_preorder_on_restrict:
+  "total_preorder_on (carrier \<inter> A) (restrict_relation A le)"
 proof -
   interpret R': preorder_on "carrier \<inter> A" "restrict_relation A le"
     by (rule preorder_on_restrict)
-  from complete show ?thesis
+  from total show ?thesis
     by unfold_locales (auto simp: restrict_relation_def)
 qed
 
-lemma complete_preorder_on_restrict_subset:
-  "A \<subseteq> carrier \<Longrightarrow> complete_preorder_on A (restrict_relation A le)"
-  using complete_preorder_on_restrict[of A] by (simp add: Int_absorb1)
+lemma total_preorder_on_restrict_subset:
+  "A \<subseteq> carrier \<Longrightarrow> total_preorder_on A (restrict_relation A le)"
+  using total_preorder_on_restrict[of A] by (simp add: Int_absorb1)
 
 end
 
@@ -120,13 +120,13 @@ abbreviation (input) weakly_not_preferred ("_ \<succeq>[_] _" [51,10,51] 60) whe
 abbreviation (input) strongly_not_preferred ("_ \<succ>[_] _" [51,10,51] 60) where
   "a \<succ>[R] b \<equiv> b \<prec>[R] a"
 
-lemma (in complete_preorder_on) not_weakly_preferred_iff:
+lemma (in total_preorder_on) not_weakly_preferred_iff:
   "a \<in> carrier \<Longrightarrow> b \<in> carrier \<Longrightarrow> \<not>a \<preceq>[le] b \<longleftrightarrow> b \<prec>[le] a"
-  using complete[of a b] by (auto simp: strongly_preferred_def)
+  using total[of a b] by (auto simp: strongly_preferred_def)
 
-lemma (in complete_preorder_on) not_strongly_preferred_iff:
+lemma (in total_preorder_on) not_strongly_preferred_iff:
   "a \<in> carrier \<Longrightarrow> b \<in> carrier \<Longrightarrow> \<not>a \<prec>[le] b \<longleftrightarrow> b \<preceq>[le] a"
-  using complete[of a b] by (auto simp: strongly_preferred_def)
+  using total[of a b] by (auto simp: strongly_preferred_def)
 
 
 subsection \<open>Maximal elements\<close>
@@ -251,22 +251,22 @@ lemma Max_wrt_mono:
 end
 
 
-context complete_preorder_on
+context total_preorder_on
 begin
 
-lemma Max_wrt_among_complete_preorder:
+lemma Max_wrt_among_total_preorder:
   "Max_wrt_among le A = {x\<in>carrier \<inter> A. \<forall>y\<in>carrier \<inter> A. le y x}"
-  unfolding Max_wrt_among_preorder using complete by blast
+  unfolding Max_wrt_among_preorder using total by blast
 
-lemma Max_wrt_complete_preorder:
+lemma Max_wrt_total_preorder:
   "Max_wrt le = {x\<in>carrier. \<forall>y\<in>carrier. le y x}"
-  unfolding Max_wrt_preorder using complete by blast
+  unfolding Max_wrt_preorder using total by blast
 
 lemma decompose_Max:
   assumes A: "A \<subseteq> carrier"
   defines "M \<equiv> Max_wrt_among le A"
   shows   "restrict_relation A le = (\<lambda>x y. x \<in> A \<and> y \<in> M \<or> (y \<notin> M \<and> restrict_relation (A - M) le x y))"
-  using A by (intro ext) (auto simp: M_def Max_wrt_among_complete_preorder 
+  using A by (intro ext) (auto simp: M_def Max_wrt_among_total_preorder 
                             restrict_relation_def Int_absorb1 intro: trans)
 
 end
@@ -471,10 +471,10 @@ proof -
 qed
 
   
-lemma complete_preorder_of_weak_ranking:
+lemma total_preorder_of_weak_ranking:
   assumes "\<Union>set xs = A"
   assumes "is_weak_ranking xs"
-  shows   "complete_preorder_on A (of_weak_ranking xs)"
+  shows   "total_preorder_on A (of_weak_ranking xs)"
 proof
   fix x y assume "x \<preceq>[of_weak_ranking xs] y"
   with assms show "x \<in> A" "y \<in> A"
@@ -509,8 +509,8 @@ lemma restrict_relation_of_weak_ranking_Cons:
   assumes "is_weak_ranking (A # As)"
   shows   "restrict_relation (\<Union>set As) (of_weak_ranking (A # As)) = of_weak_ranking As"
 proof -
-  from assms interpret R: complete_preorder_on "\<Union>set As" "of_weak_ranking As"
-    by (intro complete_preorder_of_weak_ranking)
+  from assms interpret R: total_preorder_on "\<Union>set As" "of_weak_ranking As"
+    by (intro total_preorder_of_weak_ranking)
        (simp_all add: is_weak_ranking_Cons)
   from assms show ?thesis using R.not_outside
     by (intro ext) (auto simp: restrict_relation_def of_weak_ranking_Cons
@@ -521,11 +521,11 @@ qed
 
 
 lemmas of_weak_ranking_wf = 
-  complete_preorder_of_weak_ranking is_weak_ranking_code insert_commute
+  total_preorder_of_weak_ranking is_weak_ranking_code insert_commute
 
 
 (* Test *)
-lemma "complete_preorder_on {1,2,3,4::nat} (of_weak_ranking [{1,3},{2},{4}])"
+lemma "total_preorder_on {1,2,3,4::nat} (of_weak_ranking [{1,3},{2},{4}])"
   by (simp add: of_weak_ranking_wf)
 
 
@@ -534,8 +534,8 @@ context
   assumes wf: "is_weak_ranking (x#xs)"
 begin
 
-interpretation R: complete_preorder_on "\<Union>set (x#xs)" "of_weak_ranking (x#xs)"
-  by (intro complete_preorder_of_weak_ranking) (simp_all add: wf)
+interpretation R: total_preorder_on "\<Union>set (x#xs)" "of_weak_ranking (x#xs)"
+  by (intro total_preorder_of_weak_ranking) (simp_all add: wf)
 
 lemma of_weak_ranking_imp_in_set:
   assumes "of_weak_ranking xs a b"
@@ -560,23 +560,23 @@ lemma Max_wrt_among_of_weak_ranking_Cons1:
   assumes "x \<inter> A = {}"
   shows   "Max_wrt_among (of_weak_ranking (x#xs)) A = Max_wrt_among (of_weak_ranking xs) A"
 proof -
-  from wf interpret R': complete_preorder_on "\<Union>set xs" "of_weak_ranking xs"
-    by (intro complete_preorder_of_weak_ranking) (simp_all add: is_weak_ranking_Cons)
+  from wf interpret R': total_preorder_on "\<Union>set xs" "of_weak_ranking xs"
+    by (intro total_preorder_of_weak_ranking) (simp_all add: is_weak_ranking_Cons)
   from assms show ?thesis
-    by (auto simp: R.Max_wrt_among_complete_preorder
-          R'.Max_wrt_among_complete_preorder of_weak_ranking_Cons)
+    by (auto simp: R.Max_wrt_among_total_preorder
+          R'.Max_wrt_among_total_preorder of_weak_ranking_Cons)
 qed
 
 lemma Max_wrt_among_of_weak_ranking_Cons2:
   assumes "x \<inter> A \<noteq> {}"
   shows   "Max_wrt_among (of_weak_ranking (x#xs)) A = x \<inter> A"
 proof -
-  from wf interpret R': complete_preorder_on "\<Union>set xs" "of_weak_ranking xs"
-    by (intro complete_preorder_of_weak_ranking) (simp_all add: is_weak_ranking_Cons)
+  from wf interpret R': total_preorder_on "\<Union>set xs" "of_weak_ranking xs"
+    by (intro total_preorder_of_weak_ranking) (simp_all add: is_weak_ranking_Cons)
   from assms obtain a where "a \<in> x \<inter> A" by blast
   with wf R'.not_outside(1)[of a] show ?thesis
-    by (auto simp: R.Max_wrt_among_complete_preorder is_weak_ranking_Cons
-          R'.Max_wrt_among_complete_preorder of_weak_ranking_Cons)
+    by (auto simp: R.Max_wrt_among_total_preorder is_weak_ranking_Cons
+          R'.Max_wrt_among_total_preorder of_weak_ranking_Cons)
 qed
 
 lemma Max_wrt_among_of_weak_ranking_Cons:
@@ -603,16 +603,16 @@ next
 qed
 
 
-locale finite_complete_preorder_on = complete_preorder_on +
+locale finite_total_preorder_on = total_preorder_on +
   assumes finite_carrier [intro]: "finite carrier"
 begin
 
-lemma finite_complete_preorder_on_map:
+lemma finite_total_preorder_on_map:
   assumes "finite (f -` carrier)"
-  shows   "finite_complete_preorder_on (f -` carrier) (map_relation f le)"
+  shows   "finite_total_preorder_on (f -` carrier) (map_relation f le)"
 proof -
-  interpret R': complete_preorder_on "f -` carrier" "map_relation f le"
-    using complete_preorder_on_map[of f] .
+  interpret R': total_preorder_on "f -` carrier" "map_relation f le"
+    using total_preorder_on_map[of f] .
   from assms show ?thesis by unfold_locales simp
 qed
 
@@ -679,10 +679,10 @@ proof (induction A rule: weak_ranking_aux.induct [case_names empty nonempty])
   from nonempty.prems nonempty.hyps have M: "M \<subseteq> A" unfolding M_def
     by (intro Max_wrt_among_subset)
   from nonempty.prems have in_MD: "le x y" if "x \<in> A" "y \<in> M" for x y
-    using that unfolding M_def Max_wrt_among_complete_preorder
+    using that unfolding M_def Max_wrt_among_total_preorder
     by (auto simp: Int_absorb1)
   from nonempty.prems have in_MI: "x \<in> M" if "y \<in> M" "x \<in> A"  "le y x" for x y
-    using that unfolding M_def Max_wrt_among_complete_preorder
+    using that unfolding M_def Max_wrt_among_total_preorder
     by (auto simp: Int_absorb1 intro: trans)
 
   from nonempty.prems nonempty.hyps
@@ -690,8 +690,8 @@ proof (induction A rule: weak_ranking_aux.induct [case_names empty nonempty])
                 restrict_relation (A - M) le x y" if "x \<notin> M" "y \<notin> M"
        using that unfolding M_def by (intro nonempty.IH) auto
   from nonempty.prems 
-    interpret R': complete_preorder_on "A - M" "of_weak_ranking (weak_ranking_aux (A - M))"
-    by (intro complete_preorder_of_weak_ranking weak_ranking_aux_wf weak_ranking_aux_Union) auto
+    interpret R': total_preorder_on "A - M" "of_weak_ranking (weak_ranking_aux (A - M))"
+    by (intro total_preorder_of_weak_ranking weak_ranking_aux_wf weak_ranking_aux_Union) auto
   
   from nonempty.prems nonempty.hyps M weak_ranking_aux_Union[of A] R'.not_outside[of x y] 
     show ?case
@@ -705,8 +705,8 @@ lemma of_weak_ranking_weak_ranking_aux:
 proof (intro ext)
   fix x y
   have "is_weak_ranking (weak_ranking_aux carrier)" by (rule weak_ranking_aux_wf) simp
-  then interpret R: complete_preorder_on carrier "of_weak_ranking (weak_ranking_aux carrier)"
-    by (intro complete_preorder_of_weak_ranking weak_ranking_aux_wf weak_ranking_aux_Union)
+  then interpret R: total_preorder_on carrier "of_weak_ranking (weak_ranking_aux carrier)"
+    by (intro total_preorder_of_weak_ranking weak_ranking_aux_wf weak_ranking_aux_Union)
        (simp_all add: weak_ranking_aux_Union)
 
   show "of_weak_ranking (weak_ranking_aux carrier) x y = le x y"
@@ -760,8 +760,8 @@ lemma weak_ranking_aux_unique:
   assumes "is_weak_ranking As" "of_weak_ranking As = le"
   shows   "As = weak_ranking_aux carrier"
 proof -
-  interpret R: complete_preorder_on "\<Union>set As" "of_weak_ranking As"
-    by (intro complete_preorder_of_weak_ranking assms) simp_all
+  interpret R: total_preorder_on "\<Union>set As" "of_weak_ranking As"
+    by (intro total_preorder_of_weak_ranking assms) simp_all
   from assms have "x \<in> (\<Union>set As) \<longleftrightarrow> x \<in> carrier" for x
     using R.not_outside not_outside R.refl[of x] refl[of x]
     by blast
@@ -771,7 +771,7 @@ proof -
   with eq show ?thesis by simp
 qed
 
-lemma weak_ranking_complete_preorder:
+lemma weak_ranking_total_preorder:
   "is_weak_ranking (weak_ranking le)" "of_weak_ranking (weak_ranking le) = le"
 proof -
   from weak_ranking_aux_wf[of carrier] of_weak_ranking_weak_ranking_aux
@@ -784,7 +784,7 @@ qed
 
 lemma weak_ranking_altdef:
   "weak_ranking le = weak_ranking_aux carrier"
-  by (intro weak_ranking_aux_unique weak_ranking_complete_preorder)
+  by (intro weak_ranking_aux_unique weak_ranking_total_preorder)
 
 lemma weak_ranking_Union: "(\<Union>set (weak_ranking le)) = carrier"
   by (simp add: weak_ranking_altdef weak_ranking_aux_Union)
@@ -800,14 +800,14 @@ lemma weak_ranking_permute:
 proof -
   from assms have "inv f -` carrier = carrier"
     by (simp add: permutes_vimage permutes_inv)
-  then interpret R: finite_complete_preorder_on "inv f -` carrier" "map_relation (inv f) le"
-    by (intro finite_complete_preorder_on_map) (simp_all add: finite_carrier)
+  then interpret R: finite_total_preorder_on "inv f -` carrier" "map_relation (inv f) le"
+    by (intro finite_total_preorder_on_map) (simp_all add: finite_carrier)
   from assms have "is_weak_ranking (map (op ` f) (weak_ranking le))"
     by (intro is_weak_ranking_map_inj) 
-       (simp_all add: weak_ranking_complete_preorder permutes_inj_on)
+       (simp_all add: weak_ranking_total_preorder permutes_inj_on)
   with assms show ?thesis
     by (intro sym[OF R.weak_ranking_unique])
-       (simp_all add: of_weak_ranking_permute weak_ranking_Union weak_ranking_complete_preorder)
+       (simp_all add: of_weak_ranking_permute weak_ranking_Union weak_ranking_total_preorder)
 qed
 
 lemma weak_ranking_index_unique:
@@ -830,7 +830,7 @@ proof -
     by (auto simp: set_conv_nth)
   with assms have "of_weak_ranking (weak_ranking le) x y"
     by (intro of_weak_ranking.intros[of i i]) auto
-  thus ?thesis by (simp add: weak_ranking_complete_preorder)
+  thus ?thesis by (simp add: weak_ranking_total_preorder)
 qed
 
 lemma weak_ranking_eqclass2:
@@ -838,9 +838,9 @@ lemma weak_ranking_eqclass2:
   shows   "y \<in> A"
 proof -
   def xs \<equiv> "weak_ranking le"
-  have wf: "is_weak_ranking xs" by (simp add: xs_def weak_ranking_complete_preorder)
+  have wf: "is_weak_ranking xs" by (simp add: xs_def weak_ranking_total_preorder)
   let ?le' = "of_weak_ranking xs"
-  from le have le': "?le' x y" "?le' y x" by (simp_all add: weak_ranking_complete_preorder xs_def)
+  from le have le': "?le' x y" "?le' y x" by (simp_all add: weak_ranking_total_preorder xs_def)
   from le'(1) obtain i j
     where ij: "j \<le> i" "i < length xs" "j < length xs" "x \<in> xs ! i" "y \<in> xs ! j"
     by (cases rule: of_weak_ranking.cases)
@@ -866,7 +866,7 @@ proof -
   moreover from assms(2) weak_ranking_Union have "weak_ranking le \<noteq> []" by auto
   ultimately have "of_weak_ranking (weak_ranking le) y x" using assms(1)
     by (intro of_weak_ranking.intros[of 0 i]) (auto simp: hd_conv_nth)
-  thus ?thesis by (simp add: weak_ranking_complete_preorder)
+  thus ?thesis by (simp add: weak_ranking_total_preorder)
 qed
 
 lemma last_weak_ranking:
@@ -880,7 +880,7 @@ proof -
   ultimately have "of_weak_ranking (weak_ranking le) x y" using assms(1)
     by (intro of_weak_ranking.intros[of i "length (weak_ranking le) - 1"])
        (auto simp: last_conv_nth)
-  thus ?thesis by (simp add: weak_ranking_complete_preorder)
+  thus ?thesis by (simp add: weak_ranking_total_preorder)
 qed
 
 definition ranking_index :: "'a \<Rightarrow> nat" where
@@ -899,14 +899,14 @@ qed
 lemma ranking_index_eqI:
   "i < length (weak_ranking le) \<Longrightarrow> x \<in> weak_ranking le ! i \<Longrightarrow> ranking_index x = i"
   using weak_ranking_index_unique'[of "weak_ranking le" i x]
-  by (simp add: ranking_index_def weak_ranking_complete_preorder)
+  by (simp add: ranking_index_def weak_ranking_total_preorder)
 
 lemma ranking_index_le_iff [simp]:
   assumes "x \<in> carrier" "y \<in> carrier"
   shows   "ranking_index x \<ge> ranking_index y \<longleftrightarrow> le x y"
 proof -
   have "le x y \<longleftrightarrow> of_weak_ranking (weak_ranking le) x y"
-    by (simp add: weak_ranking_complete_preorder)
+    by (simp add: weak_ranking_total_preorder)
   also have "\<dots> \<longleftrightarrow> ranking_index x \<ge> ranking_index y"
   proof
     assume "ranking_index x \<ge> ranking_index y"
@@ -927,19 +927,19 @@ qed
 end
 
 lemmas of_weak_ranking_weak_ranking = 
-  finite_complete_preorder_on.weak_ranking_complete_preorder(2)
+  finite_total_preorder_on.weak_ranking_total_preorder(2)
 
-lemma finite_complete_preorder_on_iff:
-  "finite_complete_preorder_on A R \<longleftrightarrow> complete_preorder_on A R \<and> finite A"
-  by (simp add: finite_complete_preorder_on_def finite_complete_preorder_on_axioms_def)
+lemma finite_total_preorder_on_iff:
+  "finite_total_preorder_on A R \<longleftrightarrow> total_preorder_on A R \<and> finite A"
+  by (simp add: finite_total_preorder_on_def finite_total_preorder_on_axioms_def)
 
-lemma finite_complete_preorder_of_weak_ranking:
+lemma finite_total_preorder_of_weak_ranking:
   assumes "\<Union>set xs = A" "is_finite_weak_ranking xs"
-  shows   "finite_complete_preorder_on A (of_weak_ranking xs)"
+  shows   "finite_total_preorder_on A (of_weak_ranking xs)"
 proof -
   from assms(2) have "is_weak_ranking xs" by (simp add: is_finite_weak_ranking_def)
-  from assms(1) and this interpret complete_preorder_on A "of_weak_ranking xs"
-    by (rule complete_preorder_of_weak_ranking)
+  from assms(1) and this interpret total_preorder_on A "of_weak_ranking xs"
+    by (rule total_preorder_of_weak_ranking)
   from assms(2) show ?thesis
     by unfold_locales (simp add: assms(1)[symmetric] is_finite_weak_ranking_def)
 qed  
@@ -948,16 +948,16 @@ lemma weak_ranking_of_weak_ranking:
   assumes "is_finite_weak_ranking xs"
   shows   "weak_ranking (of_weak_ranking xs) = xs"
 proof -
-  from assms interpret finite_complete_preorder_on "\<Union>set xs" "of_weak_ranking xs"
-    by (intro finite_complete_preorder_of_weak_ranking) simp_all
+  from assms interpret finite_total_preorder_on "\<Union>set xs" "of_weak_ranking xs"
+    by (intro finite_total_preorder_of_weak_ranking) simp_all
   from assms show ?thesis
     by (intro sym[OF weak_ranking_unique]) (simp_all add: is_finite_weak_ranking_def)
 qed
 
 
 lemma weak_ranking_eqD:
-  assumes "finite_complete_preorder_on alts R1"
-  assumes "finite_complete_preorder_on alts R2"
+  assumes "finite_total_preorder_on alts R1"
+  assumes "finite_total_preorder_on alts R2"
   assumes "weak_ranking R1 = weak_ranking R2"
   shows   "R1 = R2"
 proof -
@@ -966,8 +966,8 @@ proof -
 qed
 
 lemma weak_ranking_eq_iff:
-  assumes "finite_complete_preorder_on alts R1"
-  assumes "finite_complete_preorder_on alts R2"
+  assumes "finite_total_preorder_on alts R1"
+  assumes "finite_total_preorder_on alts R2"
   shows   "weak_ranking R1 = weak_ranking R2 \<longleftrightarrow> R1 = R2"
   using assms weak_ranking_eqD by auto
 

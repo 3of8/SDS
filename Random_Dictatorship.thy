@@ -15,7 +15,7 @@ imports
 begin
 
 text \<open>
-  We define Random Dictatorship as a social decision scheme on complete preorders 
+  We define Random Dictatorship as a social decision scheme on total preorders 
   (i.e. agents are allowed to have ties in their rankings) by first selecting an agent
   uniformly at random and then selecting one of that agents' most preferred alternatives
   uniformly at random. Note that this definition also works for weak preferences.
@@ -27,7 +27,7 @@ definition random_dictatorship :: "'agent set \<Rightarrow> ('agent, 'alt) pref_
         pmf_of_set (favorites R i)
       }"
 
-context agenda
+context election
 begin
 
 abbreviation RD :: "('agent, 'alt) pref_profile \<Rightarrow> 'alt lottery" where
@@ -88,7 +88,7 @@ text \<open>
   In Random Dictatorship, permuting the agents in the preference profile is the same
   as applying the permutation to the agent that was picked uniformly at random in the 
   first step. However, uniform distributions are invariant under permutation, therefore
-  the outcome is completely unchanged.
+  the outcome is totally unchanged.
 \<close>
 
 sublocale RD: anonymous_sds agents alts RD
@@ -142,7 +142,7 @@ text \<open>
 sublocale RD: strongly_strategyproof_sds agents alts RD
 proof (unfold_locales, unfold RD.strongly_strategyproof_profile_def)
   fix R i Ri' assume R_wf: "is_pref_profile R" and i: "i \<in> agents"
-                 and Ri'_wf: "complete_preorder_on alts Ri'"
+                 and Ri'_wf: "total_preorder_on alts Ri'"
   interpret R: pref_profile_wf agents alts R by fact
   from R_wf Ri'_wf i have R'_wf: "is_pref_profile (R(i := Ri'))"
     by (simp add: R.wf_update)

@@ -29,13 +29,13 @@ lemma lift_pref_profile_wf:
   shows   "pref_profile_wf agents' alts' R'"
 proof -
   from assms interpret R: pref_profile_wf agents alts by simp
-  have "finite_complete_preorder_on alts' (R' i)" 
+  have "finite_total_preorder_on alts' (R' i)" 
     if i: "i \<in> agents'" for i
   proof (cases "i \<in> agents")
     case True
-    then interpret finite_complete_preorder_on alts "R i" by simp
+    then interpret finite_total_preorder_on alts "R i" by simp
     from True assms show ?thesis
-      by unfold_locales (auto simp: lift_pref_profile_def dest: complete intro: trans)
+      by unfold_locales (auto simp: lift_pref_profile_def dest: total intro: trans)
   next 
     case False
     with assms i show ?thesis
@@ -70,21 +70,21 @@ qed
 context
   fixes agents alts R agents' alts' R'
   assumes R_wf: "pref_profile_wf agents alts R"
-  assumes agenda: "agents \<subseteq> agents'" "alts \<subseteq> alts'" "alts \<noteq> {}" "agents \<noteq> {}" "finite alts'"
+  assumes election: "agents \<subseteq> agents'" "alts \<subseteq> alts'" "alts \<noteq> {}" "agents \<noteq> {}" "finite alts'"
   defines "R' \<equiv> lift_pref_profile agents alts agents' alts' R"
 begin
 
 interpretation R: pref_profile_wf agents alts R by fact
 interpretation R': pref_profile_wf agents' alts' R' 
-  using agenda R_wf by (simp add: R'_def lift_pref_profile_wf)
+  using election R_wf by (simp add: R'_def lift_pref_profile_wf)
 
 lemma lift_pref_profile_strict_iff:
   "x \<prec>[lift_pref_profile agents alts agents' alts' R i] y \<longleftrightarrow>
      i \<in> agents \<and> ((y \<in> alts \<and> x \<in> alts' - alts) \<or> x \<prec>[R i] y)"
 proof (cases "i \<in> agents")
   case True
-  then interpret complete_preorder_on alts "R i" by simp
-  show ?thesis using not_outside agenda
+  then interpret total_preorder_on alts "R i" by simp
+  show ?thesis using not_outside election
     by (auto simp: lift_pref_profile_def strongly_preferred_def)
 qed (simp_all add: lift_pref_profile_def strongly_preferred_def)
 
@@ -94,9 +94,9 @@ lemma preferred_alts_lift_pref_profile:
              (if i \<in> agents \<and> x \<in> alts then preferred_alts (R i) x else alts')"
 proof (cases "i \<in> agents")
   assume i: "i \<in> agents"
-  then interpret Ri: complete_preorder_on alts "R i" by simp
+  then interpret Ri: total_preorder_on alts "R i" by simp
   show ?thesis
-  using i x agenda Ri.not_outside
+  using i x election Ri.not_outside
     by (auto simp: preferred_alts_def R'_def lift_pref_profile_def Ri.refl)
 qed (auto simp: preferred_alts_def R'_def lift_pref_profile_def i x)
 
@@ -112,8 +112,8 @@ next
 
   have "y \<succeq>[R i] x" if i: "i \<in> agents" for i
   proof -
-    from i interpret complete_preorder_on alts "R i" by simp
-    from y i agenda have "y \<succeq>[R' i] x" by (auto simp: R'.Pareto_strict_iff)
+    from i interpret total_preorder_on alts "R i" by simp
+    from y i election have "y \<succeq>[R' i] x" by (auto simp: R'.Pareto_strict_iff)
     with i x show "y \<succeq>[R i] x" by (auto simp: R'_def lift_pref_profile_def refl)
   qed
   moreover from y obtain i where "i \<in> agents'" "y \<succ>[R' i] x" by (auto simp: R'.Pareto_strict_iff)
@@ -129,11 +129,11 @@ next
   have "y \<succeq>[R' i] x" if i: "i \<in> agents'" for i
   proof (cases "i \<in> agents")
     case True
-    from y True agenda have "y \<succeq>[R i] x" by (auto simp: R.Pareto_strict_iff)
-    with i agenda show "y \<succeq>[R' i] x" by (auto simp: R'_def lift_pref_profile_def refl)
-  qed (insert agenda i, auto simp: R'_def lift_pref_profile_def)
+    from y True election have "y \<succeq>[R i] x" by (auto simp: R.Pareto_strict_iff)
+    with i election show "y \<succeq>[R' i] x" by (auto simp: R'_def lift_pref_profile_def refl)
+  qed (insert election i, auto simp: R'_def lift_pref_profile_def)
   moreover from y obtain i where "i \<in> agents" "y \<succ>[R i] x" by (auto simp: R.Pareto_strict_iff)
-  with agenda have "i \<in> agents'" "y \<succ>[R' i] x" 
+  with election have "i \<in> agents'" "y \<succ>[R' i] x" 
     by (auto simp: R'_def lift_pref_profile_strict_iff)
   ultimately have "y \<succ>[Pareto(R')] x" unfolding R'.Pareto_strict_iff by auto
   thus "x \<in> pareto_losers R'" by (rule pareto_losersI)
@@ -141,13 +141,13 @@ next
   fix x assume x: "x \<in> alts'" "x \<notin> alts"
   from \<open>agents \<noteq> {}\<close> obtain i where i: "i \<in> agents" by blast
   from \<open>alts \<noteq> {}\<close> obtain y where y: "y \<in> alts" by blast
-  from R_wf agenda interpret pref_profile_wf agents' alts' R'
+  from R_wf election interpret pref_profile_wf agents' alts' R'
     unfolding R'_def by (intro lift_pref_profile_wf) auto
 
-  from x y agenda have "y \<succeq>[R' j] x" if "j \<in> agents'" for j
+  from x y election have "y \<succeq>[R' j] x" if "j \<in> agents'" for j
     using that by (auto simp: R'_def lift_pref_profile_def)
-  moreover from i agenda have "i \<in> agents'" by blast
-  moreover from x y i agenda have "y \<succ>[R' i] x"
+  moreover from i election have "i \<in> agents'" by blast
+  moreover from x y i election have "y \<succ>[R' i] x"
     by (auto simp: strongly_preferred_def R'_def lift_pref_profile_def)
   ultimately show "x \<in> pareto_losers R'" by (rule pareto_losersI[OF R'.Pareto_strictI])
 qed
@@ -179,7 +179,7 @@ lemma lift_wf [simp, intro]:
   "pref_profile_wf agents' alts' R \<Longrightarrow> is_pref_profile (lift R)"
   using alts'_subset agents'_subset by (intro lift_pref_profile_wf) simp_all
 
-sublocale lowered: agenda agents' alts'
+sublocale lowered: election agents' alts'
   by unfold_locales simp_all
 
 lemma preferred_alts_lift:
@@ -316,7 +316,7 @@ proof
       qed (auto simp: lowered.sds_wf R_wf q')
     next
       assume i': "i \<notin> agents'"
-      from i have "complete_preorder_on alts (lift R i)" by simp
+      from i have "total_preorder_on alts (lift R i)" by simp
       with i' agents'_subset i q q' R_wf show ?thesis
         by (intro R'.SD_pref_profileI)
            (auto intro!: lowered.sds_wf 
@@ -325,7 +325,7 @@ proof
     moreover have "\<exists>i\<in>agents. \<not>(q \<preceq>[SD(lift R i)] lowered R)"
     proof
       from i agents'_subset show i': "i \<in> agents" by blast
-      from i interpret R: complete_preorder_on alts' "R i"
+      from i interpret R: total_preorder_on alts' "R i"
         using R_wf by (simp add: i)
       from strong have "\<not>(q \<preceq>[SD(R i)] lowered R)" 
         by (simp add: strongly_preferred_def)
@@ -356,7 +356,7 @@ sublocale strategyproof_sds agents' alts' lowered
 proof (unfold_locales, safe)
   fix R i Ri'
   assume R_wf: "lowered.is_pref_profile R" and i: "i \<in> agents'"
-  assume Ri': "complete_preorder_on alts' Ri'"
+  assume Ri': "total_preorder_on alts' Ri'"
   assume manipulable: "lowered.manipulable_profile R i Ri'"
   from i agents'_subset have i': "i \<in> agents" by blast
   interpret R: pref_profile_wf agents' alts' R by fact
@@ -364,8 +364,8 @@ proof (unfold_locales, safe)
  
   def lift_Ri' \<equiv> "\<lambda>x y. x \<in> alts \<and> y \<in> alts \<and> (x = y \<or> x \<notin> alts' \<or> (y \<in> alts' \<and> Ri' x y))"
   def S \<equiv> "(lift R)(i := lift_Ri')"
-  from Ri' interpret Ri': complete_preorder_on alts' Ri' .
-  have [simp]: "complete_preorder_on alts lift_Ri'" using Ri'.complete
+  from Ri' interpret Ri': total_preorder_on alts' Ri' .
+  have [simp]: "total_preorder_on alts lift_Ri'" using Ri'.total
     by unfold_locales (auto simp: lift_Ri'_def intro: Ri'.trans)
   from lift_wf[OF R_wf] Ri' i agents'_subset have [simp]: "sds S \<in> lotteries" 
     by (auto intro!: sds_wf simp: S_def pref_profile_wf_def)

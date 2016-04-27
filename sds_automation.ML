@@ -437,6 +437,23 @@ fun prepare_strategyproofness_intro_thms ctxt dist_limit sds_san_thm (ps : info 
         NONE => manipulations
       | SOME l =>
           map (fn (p1, p2, ms) => (p1, p2, filter (fn x => #3 x <= l) ms)) manipulations
+    val pretty_term_list = map (Pretty.quote o Syntax.pretty_term ctxt) #> Pretty.list "[" "]"
+    val pretty_perm = 
+      map (fn (a,b) => Pretty.block [Pretty.str "(", Pretty.quote (Syntax.pretty_term ctxt a), 
+        Pretty.str ",", Pretty.quote (Syntax.pretty_term ctxt b), Pretty.str ")"])
+      #> Pretty.list "[" "]"
+    val foo =
+      manipulations |> map (fn (p1 : info, p2 : info, ms) =>
+        ms 
+        |> map (fn (i, j, _, sigma) =>
+          [Pretty.str "(", Binding.pretty (#binding p1), Pretty.str ",",
+           Binding.pretty (#binding p2), Pretty.str ",",
+           Pretty.quote (Syntax.pretty_term ctxt i), Pretty.str ",",
+           Pretty.list "[" "]" (map pretty_term_list (the (AList.lookup op aconv (#raw p2) j))), Pretty.str ",",
+           pretty_perm sigma, Pretty.str ")"]
+          |> Pretty.block
+          ))
+        |> flat |> Pretty.list "[" "]" |> Pretty.writeln
     fun mk_binding (p1, p2) =
       Binding.qualify true 
         (Binding.name_of (#binding p1) ^ "_" ^ Binding.name_of (#binding p2)) 

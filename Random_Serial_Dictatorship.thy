@@ -145,12 +145,12 @@ lemma (in pref_profile_wf) RSD_pareto_eqclass_insert:
           "i \<in> agents" "agents' \<subseteq> agents"
   shows   "RSD_pareto_eqclass (insert i agents') alts R (Max_wrt_among (R i) A)"
 proof -
-  from assms interpret complete_preorder_on alts "R i" by simp
+  from assms interpret total_preorder_on alts "R i" by simp
   show ?thesis
   proof (intro RSD_pareto_eqclassI Max_wrt_among_nonempty Max_wrt_among_subset, goal_cases)
     case (3 x y)
     with RSD_pareto_eqclassD[OF assms(1)] 
-      show ?case unfolding Max_wrt_among_complete_preorder 
+      show ?case unfolding Max_wrt_among_total_preorder 
       by (blast intro: trans)
   qed (insert RSD_pareto_eqclassD[OF assms(1)] assms(2), 
        simp_all add: Int_absorb1 Int_absorb2 finite_subset)[2]
@@ -171,7 +171,7 @@ lemma rsd_winners_subset:
 proof -
   {
     fix i assume "i \<in> agents"
-    then interpret complete_preorder_on alts "R i" by simp
+    then interpret total_preorder_on alts "R i" by simp
     have "Max_wrt_among (R i) A \<subseteq> A" for A
       using Max_wrt_among_subset by blast
   } note A = this
@@ -189,7 +189,7 @@ lemma rsd_winners_nonempty:
 proof -
   {
     fix i assume "i \<in> agents"
-    then interpret complete_preorder_on alts "R i" by simp
+    then interpret total_preorder_on alts "R i" by simp
     have "Max_wrt_among (R i) A \<noteq> {}" if "A \<subseteq> alts" "A \<noteq> {}" for A
       using that assms by (intro Max_wrt_among_nonempty) (auto simp: Int_absorb)
   } note B = this
@@ -267,15 +267,15 @@ text \<open>
   form an indifference set w.r.t. @{term R}.
 \<close>
 private lemma indiff_set_Max_wrt_among:
-  assumes "finite carrier" "A \<subseteq> carrier" "A \<noteq> {}" "complete_preorder_on carrier S" 
+  assumes "finite carrier" "A \<subseteq> carrier" "A \<noteq> {}" "total_preorder_on carrier S" 
   shows   "indiff_set S (Max_wrt_among S A)"
   unfolding indiff_set_def
 proof
-  from assms(4) interpret complete_preorder_on carrier S .
+  from assms(4) interpret total_preorder_on carrier S .
   from assms(1-3) 
     show "Max_wrt_among S A \<noteq> {}" by (intro Max_wrt_among_nonempty) auto
   from assms(1-3) show "\<forall>x\<in>Max_wrt_among S A. \<forall>y\<in>Max_wrt_among S A. S x y"
-    by (auto simp: indiff_set_def Max_wrt_among_complete_preorder)
+    by (auto simp: indiff_set_def Max_wrt_among_total_preorder)
 qed
 
 
@@ -287,7 +287,7 @@ text \<open>
   set-preferred over the outcome for the manipulated profile.
 \<close>
 lemma rsd_winners_manipulation_aux:
-  assumes wf: "complete_preorder_on alts Ri'"
+  assumes wf: "total_preorder_on alts Ri'"
       and i: "i \<in> agents" and "set agents' \<subseteq> agents" "finite agents" 
       and finite: "finite alts" and "alts \<noteq> {}"
   defines [simp]: "w' \<equiv> rsd_winners (R(i := Ri')) alts" and [simp]: "w \<equiv> rsd_winners R alts"
@@ -295,9 +295,9 @@ lemma rsd_winners_manipulation_aux:
 using \<open>set agents' \<subseteq> agents\<close>
 proof (induction agents')
   case (Cons j agents')
-  from wf i interpret Ri: complete_preorder_on alts "R i" by simp
-  from wf Cons.prems interpret Rj: complete_preorder_on alts "R j" by simp
-  from wf interpret Ri': complete_preorder_on alts "Ri'" .
+  from wf i interpret Ri: total_preorder_on alts "R i" by simp
+  from wf Cons.prems interpret Rj: total_preorder_on alts "R j" by simp
+  from wf interpret Ri': total_preorder_on alts "Ri'" .
   from wf assms Cons.prems 
     have indiff_set: "indiff_set (R i) (Max_wrt_among (R i) (rsd_winners R alts agents'))"
     by (intro indiff_set_Max_wrt_among[OF finite] rsd_winners_wf) simp_all
@@ -307,7 +307,7 @@ proof (induction agents')
     assume j [simp]: "j = i"
     from indiff_set Cons have "RSD_set_rel (R i) (w' (j # agents')) (w (j # agents'))"
       unfolding RSD_set_rel_def
-      by (auto simp: Ri.Max_wrt_among_complete_preorder Ri'.Max_wrt_among_complete_preorder)
+      by (auto simp: Ri.Max_wrt_among_total_preorder Ri'.Max_wrt_among_total_preorder)
     thus ?case ..
   next
     assume j [simp]: "j \<noteq> i"
@@ -325,7 +325,7 @@ proof (induction agents')
         by (intro indiff_set_mono[OF indiff_set] Rj.Max_wrt_among_subset)
            (simp_all add: Rj.Max_wrt_among_subset)
       moreover from rel have "\<forall>x\<in>w' (j # agents'). \<forall>y\<in>w (j # agents'). R i x y"
-        by (auto simp: RSD_set_rel_def Rj.Max_wrt_among_complete_preorder)
+        by (auto simp: RSD_set_rel_def Rj.Max_wrt_among_total_preorder)
       ultimately have "RSD_set_rel (R i) (w' (j # agents')) (w (j # agents'))"
         unfolding RSD_set_rel_def ..
       thus ?case ..
@@ -342,7 +342,7 @@ text \<open>
   original outcome is always set-preferred to the manipulated one.
 \<close>
 lemma rsd_winners_manipulation:
-  assumes wf: "complete_preorder_on alts Ri'"
+  assumes wf: "total_preorder_on alts Ri'"
       and i: "i \<in> agents" and "set agents' = agents" "finite agents" 
       and finite: "finite alts" and "alts \<noteq> {}"
   defines [simp]: "w' \<equiv> rsd_winners (R(i := Ri')) alts" and [simp]: "w \<equiv> rsd_winners R alts"
@@ -390,7 +390,7 @@ proof (induction agents')
   from perm show ?case by (simp add: permutes_image)
 next
   case (Cons i agents')
-  from wf Cons interpret complete_preorder_on alts "R i" by simp
+  from wf Cons interpret total_preorder_on alts "R i" by simp
   from perm Cons show ?case
     by (simp add: permute_profile_map_relation Max_wrt_among_map_relation_bij permutes_bij)
 qed
@@ -416,7 +416,7 @@ text \<open>
   doing much reasoning about probabilities.
 \<close>
 
-context agenda
+context election
 begin     
 
 abbreviation "RSD \<equiv> random_serial_dictatorship agents alts"
@@ -545,14 +545,14 @@ sublocale RSD: strongly_strategyproof_sds agents alts RSD
 proof (unfold_locales, rule)
   fix R i Ri' x
   assume wf: "is_pref_profile R" and i [simp]: "i \<in> agents" and x: "x \<in> alts" and
-         wf': "complete_preorder_on alts Ri'"
+         wf': "total_preorder_on alts Ri'"
   interpret R: pref_profile_wf agents alts R by fact
   def R' \<equiv> "R (i := Ri')"
   from wf wf' have "is_pref_profile R'" by (simp add: R'_def R.wf_update)
   then interpret R': pref_profile_wf agents alts R' .
   note wf = wf wf'
   let ?A = "preferred_alts (R i) x"
-  from wf interpret Ri: complete_preorder_on alts "R i" by simp
+  from wf interpret Ri: total_preorder_on alts "R i" by simp
 
   {
     fix agents' assume agents': "agents' \<in> permutations_of_set agents"

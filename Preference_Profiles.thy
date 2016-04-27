@@ -37,21 +37,21 @@ end
 locale pref_profile_wf =
   fixes agents :: "'agent set" and alts :: "'alt set" and R :: "('agent, 'alt) pref_profile"
   assumes nonempty_agents [simp]: "agents \<noteq> {}" and nonempty_alts [simp]: "alts \<noteq> {}"
-  assumes prefs_wf [simp]: "i \<in> agents \<Longrightarrow> finite_complete_preorder_on alts (R i)"
+  assumes prefs_wf [simp]: "i \<in> agents \<Longrightarrow> finite_total_preorder_on alts (R i)"
   assumes prefs_undefined [simp]: "i \<notin> agents \<Longrightarrow> \<not>R i x y"
 begin
 
 lemma finite_alts [simp]: "finite alts"
 proof -
   from nonempty_agents obtain i where "i \<in> agents" by blast
-  then interpret finite_complete_preorder_on alts "R i" by simp
+  then interpret finite_total_preorder_on alts "R i" by simp
   show ?thesis by fact
 qed
 
 lemma prefs_wf' [simp]:
-  "i \<in> agents \<Longrightarrow> complete_preorder_on alts (R i)" "i \<in> agents \<Longrightarrow> preorder_on alts (R i)"
+  "i \<in> agents \<Longrightarrow> total_preorder_on alts (R i)" "i \<in> agents \<Longrightarrow> preorder_on alts (R i)"
   using prefs_wf[of i]
-  by (simp_all add: finite_complete_preorder_on_def complete_preorder_on_def del: prefs_wf)
+  by (simp_all add: finite_total_preorder_on_def total_preorder_on_def del: prefs_wf)
 
 sublocale preorder_family agents alts R
   by (intro preorder_family.intro) simp_all
@@ -59,7 +59,7 @@ sublocale preorder_family agents alts R
 lemmas prefs_undefined' = not_in_dom'
 
 lemma wf_update:
-  "i \<in> agents \<Longrightarrow> finite_complete_preorder_on alts Ri' \<Longrightarrow> 
+  "i \<in> agents \<Longrightarrow> finite_total_preorder_on alts Ri' \<Longrightarrow> 
      pref_profile_wf agents alts (R(i := Ri'))"
   by (auto intro!: pref_profile_wf.intro split: if_splits)
 
@@ -111,12 +111,12 @@ lemma (in pref_profile_wf) wf_permute_alts:
   shows   "pref_profile_wf agents alts (permute_profile \<sigma> R)"
 proof (rule pref_profile_wf.intro)
   fix i assume "i \<in> agents"
-  with assms interpret R: finite_complete_preorder_on alts "R i" by simp
+  with assms interpret R: finite_total_preorder_on alts "R i" by simp
     
   from assms have [simp]: "inv \<sigma> x \<in> alts \<longleftrightarrow> x \<in> alts" for x
     by (simp add: permutes_in_image permutes_inv)
 
-  show "finite_complete_preorder_on alts (permute_profile \<sigma> R i)"
+  show "finite_total_preorder_on alts (permute_profile \<sigma> R i)"
   proof
     fix x y assume "permute_profile \<sigma> R i x y"
     thus "x \<in> alts" "y \<in> alts"
@@ -127,7 +127,7 @@ proof (rule pref_profile_wf.intro)
     thus "permute_profile \<sigma> R i x z"
       using R.trans[of "inv \<sigma> x" "inv \<sigma> y" "inv \<sigma> z"] 
       by (simp_all add: permute_profile_def)
-  qed (insert R.complete R.refl R.finite_carrier, simp_all add: permute_profile_def)
+  qed (insert R.total R.refl R.finite_carrier, simp_all add: permute_profile_def)
 qed (insert assms, simp_all add: permute_profile_def pref_profile_wf_def)
 
 
@@ -245,7 +245,7 @@ proof -
   have "?A \<and> ?B"
   proof (cases "i \<in> agents")
     assume "i \<in> agents"
-    then interpret complete_preorder_on alts "R i" by simp
+    then interpret total_preorder_on alts "R i" by simp
     have "preferred_alts (R i) x \<subseteq> alts" using not_outside
       by (auto simp: preferred_alts_def)
     thus ?thesis by (auto dest: finite_subset)
@@ -295,9 +295,9 @@ lemma favorites_altdef:
   "favorites R i = Max_wrt_among (R i) alts"
 proof (cases "i \<in> agents")
   assume "i \<in> agents"
-  with assms interpret complete_preorder_on alts "R i" by simp
+  with assms interpret total_preorder_on alts "R i" by simp
   show ?thesis 
-    by (simp add: favorites_def Max_wrt_complete_preorder Max_wrt_among_complete_preorder)
+    by (simp add: favorites_def Max_wrt_total_preorder Max_wrt_among_total_preorder)
 qed (insert assms, simp_all add: favorites_def Max_wrt_def Max_wrt_among_def pref_profile_wf_def)
 
 lemma favorites_no_agent [simp]: "i \<notin> agents \<Longrightarrow> favorites R i = {}"
@@ -307,9 +307,9 @@ lemma favorites_altdef':
   "favorites R i = {x\<in>alts. \<forall>y\<in>alts. x \<succeq>[R i] y}"
 proof (cases "i \<in> agents")
   assume "i \<in> agents"
-  then interpret finite_complete_preorder_on alts "R i" by simp
+  then interpret finite_total_preorder_on alts "R i" by simp
   show ?thesis using Max_wrt_among_nonempty[of alts] Max_wrt_among_subset[of alts]
-    by (auto simp: favorites_altdef Max_wrt_among_complete_preorder)
+    by (auto simp: favorites_altdef Max_wrt_among_total_preorder)
 qed simp_all
 
 lemma favorites_subset_alts: "favorites R i \<subseteq> alts"
@@ -321,7 +321,7 @@ lemma finite_favorites [simp, intro]: "finite (favorites R i)"
 lemma favorites_nonempty: "i \<in> agents \<Longrightarrow> favorites R i \<noteq> {}"
 proof -
   assume "i \<in> agents"
-  then interpret finite_complete_preorder_on alts "R i" by simp
+  then interpret finite_total_preorder_on alts "R i" by simp
   show ?thesis unfolding favorites_def by (intro Max_wrt_nonempty) simp_all
 qed
 
@@ -329,7 +329,7 @@ lemma favorites_permute:
   assumes i: "i \<in> agents" and perm: "\<sigma> permutes alts"
   shows   "favorites (permute_profile \<sigma> R) i = \<sigma> ` favorites R i"
 proof -
-  from i interpret finite_complete_preorder_on alts "R i" by simp
+  from i interpret finite_total_preorder_on alts "R i" by simp
   from perm show ?thesis
   unfolding favorites_def
     by (subst Max_wrt_map_relation_bij)
@@ -404,19 +404,19 @@ proof -
     by (simp add:  multiset.map_comp permute_profile_map_relation o_def)
   also from assms have "\<dots> = {#map (op ` \<sigma>) (weak_ranking (R x)). x \<in># mset_set agents#}"
     by (intro image_mset_cong)
-       (simp add: finite_complete_preorder_on.weak_ranking_permute[of alts])
+       (simp add: finite_total_preorder_on.weak_ranking_permute[of alts])
   also have "\<dots> = image_mset (map (op ` \<sigma>)) (anonymous_profile R)"
     by (simp add: anonymous_profile_def multiset.map_comp o_def)
   finally show ?thesis .
 qed
 
 lemma (in pref_profile_wf) anonymous_profile_update:
-  assumes i:  "i \<in> agents" and fin [simp]: "finite agents" and "complete_preorder_on alts Ri'"
+  assumes i:  "i \<in> agents" and fin [simp]: "finite agents" and "total_preorder_on alts Ri'"
   shows   "anonymous_profile (R(i := Ri')) =
              anonymous_profile R - {#weak_ranking (R i)#} + {#weak_ranking Ri'#}"
 proof -
   from assms interpret R': pref_profile_wf agents alts "R(i := Ri')"
-    by (simp add: finite_complete_preorder_on_iff wf_update)
+    by (simp add: finite_total_preorder_on_iff wf_update)
   have "anonymous_profile (R(i := Ri')) = 
           {#weak_ranking (if x = i then Ri' else R x). x \<in># mset_set agents#}"
     by (simp add: R'.anonymous_profile_def o_def)
@@ -477,8 +477,8 @@ proof (intro pref_profile_wf.intro)
   then obtain xs where xs: "xs \<in> set (map snd xss)" "prefs_from_table xss i = of_weak_ranking xs"
     by (cases "map_of xss i")
        (fastforce dest: map_of_SomeD simp: prefs_from_table_def map_of_eq_None_iff)+
-  with wf show "finite_complete_preorder_on alts (prefs_from_table xss i)"
-    by (auto simp: prefs_from_table_wf_def intro!: finite_complete_preorder_of_weak_ranking)
+  with wf show "finite_total_preorder_on alts (prefs_from_table xss i)"
+    by (auto simp: prefs_from_table_wf_def intro!: finite_total_preorder_of_weak_ranking)
 next
   assume wf: "prefs_from_table_wf agents alts xss"
   fix i x y assume i: "i \<notin> agents"

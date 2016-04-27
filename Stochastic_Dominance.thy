@@ -1,4 +1,4 @@
-*section \<open>Stochastic Dominance\<close>
+section \<open>Stochastic Dominance\<close>
 
 theory Stochastic_Dominance
 imports 
@@ -229,7 +229,7 @@ lemma SD_pref_profile:
              (\<forall>x\<in>alts. measure_pmf.prob p (preferred_alts (R i) x) \<ge> 
                          measure_pmf.prob q (preferred_alts (R i) x))"
 proof -
-  from assms interpret complete_preorder_on alts "R i" by simp
+  from assms interpret total_preorder_on alts "R i" by simp
   have "preferred_alts (R i) x = {y. y \<succeq>[R i] x}" for x using not_outside
     by (auto simp: preferred_alts_def)
   thus ?thesis by (simp add: SD_preorder preferred_alts_def)
@@ -351,7 +351,7 @@ end
 
 subsection \<open>Definition of von Neumann--Morgenstern utility functions\<close>
 
-locale vnm_utility = finite_complete_preorder_on +
+locale vnm_utility = finite_total_preorder_on +
   fixes u :: "'a \<Rightarrow> real"
   assumes utility_le_iff: "x \<in> carrier \<Longrightarrow> y \<in> carrier \<Longrightarrow> u x \<le> u y \<longleftrightarrow> x \<preceq>[le] y"
 begin
@@ -385,7 +385,7 @@ proof -
     using that by (blast intro!: finite_subset[OF _ finite_carrier, of A])
   hence "(\<Sum>a\<in>\<Union>set (weak_ranking le). u a * pmf p a) = 
            (\<Sum>A\<leftarrow>weak_ranking le. \<Sum>a\<in>A. u a * pmf p a)" (is "_ = listsum ?xs")
-    using weak_ranking_complete_preorder
+    using weak_ranking_total_preorder
     by (subst setsum.Union_disjoint)
        (auto simp: is_weak_ranking_iff disjoint_def setsum.distinct_set_conv_list)
   also have "?xs  = map (\<lambda>A. \<Sum>a\<in>A. u (SOME a. a\<in>A) * pmf p a) (weak_ranking le)"
@@ -455,7 +455,7 @@ proof -
   proof
     fix x y assume xy: "x \<in> carrier" "y \<in> carrier"
     show "(u x - \<epsilon> * f x \<le> u y - \<epsilon> * f y) \<longleftrightarrow> le x y"
-      using complete[OF xy] mono[of x y] mono[of y x] eq[of x y]
+      using total[OF xy] mono[of x y] mono[of y x] eq[of x y]
       by (cases "le x y"; cases "le y x") (auto simp: strongly_preferred_def)
   qed
   from \<epsilon> this show ?thesis by blast
@@ -471,7 +471,7 @@ text \<open>
   it yields more expected utility for all compatible utility functions.
 \<close>
 
-context finite_complete_preorder_on
+context finite_total_preorder_on
 begin
 
 abbreviation "is_vnm_utility \<equiv> vnm_utility carrier le"
@@ -499,13 +499,13 @@ proof safe
   from is_utility interpret vnm_utility carrier le u .
   def xs \<equiv> "weak_ranking le"
   have le: "is_weak_ranking xs" "le = of_weak_ranking xs"
-    by (simp_all add: xs_def weak_ranking_complete_preorder)
+    by (simp_all add: xs_def weak_ranking_total_preorder)
 
   let ?pref = "\<lambda>p x. measure_pmf.prob p {y. x \<preceq>[le] y}" and 
       ?pref' = "\<lambda>p x. measure_pmf.prob p {y. x \<prec>[le] y}"
   def f \<equiv> "\<lambda>i. SOME x. x \<in> xs ! i"
   have xs_wf: "is_weak_ranking xs"
-    by (simp add: xs_def weak_ranking_complete_preorder)
+    by (simp add: xs_def weak_ranking_total_preorder)
   hence f: "f i \<in> xs ! i" if "i < length xs" for i
     using that unfolding f_def is_weak_ranking_def
     by (intro someI_ex[of "\<lambda>x. x \<in> xs ! i"]) (auto simp: set_conv_nth)
@@ -604,7 +604,7 @@ next
     if "is_vnm_utility u" for u using that by blast
   def xs \<equiv> "weak_ranking le"
   have le: "le = of_weak_ranking xs" and [simp]: "is_weak_ranking xs"
-    by (simp_all add: xs_def weak_ranking_complete_preorder)
+    by (simp_all add: xs_def weak_ranking_total_preorder)
   have carrier: "carrier = \<Union>set xs"
     by (simp add: xs_def weak_ranking_Union)
   from assms have carrier_nonempty: "carrier \<noteq> {}"

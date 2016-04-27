@@ -21,10 +21,10 @@ begin
 subsection \<open>Basic Social Choice definitions\<close>
 
 text \<open>
-  An agenda consists of a finite set of agents and a finite non-empty 
+  An election consists of a finite set of agents and a finite non-empty 
   set of alternatives.
 \<close>
-locale agenda = 
+locale election = 
   fixes agents :: "'agent set" and alts :: "'alt set"
   assumes finite_agents [simp, intro]: "finite agents"
   assumes finite_alts [simp, intro]: "finite alts"
@@ -34,22 +34,22 @@ begin
 
 abbreviation "is_pref_profile \<equiv> pref_profile_wf agents alts"
 
-lemma finite_complete_preorder_on_iff' [simp]:
-  "finite_complete_preorder_on alts R \<longleftrightarrow> complete_preorder_on alts R"
-  by (simp add: finite_complete_preorder_on_iff)
+lemma finite_total_preorder_on_iff' [simp]:
+  "finite_total_preorder_on alts R \<longleftrightarrow> total_preorder_on alts R"
+  by (simp add: finite_total_preorder_on_iff)
 
 lemma pref_profile_wfI' [intro?]:
-  "(\<And>i. i \<in> agents \<Longrightarrow> complete_preorder_on alts (R i)) \<Longrightarrow>
+  "(\<And>i. i \<in> agents \<Longrightarrow> total_preorder_on alts (R i)) \<Longrightarrow>
    (\<And>i. i \<notin> agents \<Longrightarrow> R i = (\<lambda>_ _. False)) \<Longrightarrow> is_pref_profile R"
   by (simp add: pref_profile_wf_def)
 
 lemma is_pref_profile_update [simp,intro]:
-  assumes "is_pref_profile R" "complete_preorder_on alts Ri'" "i \<in> agents"
+  assumes "is_pref_profile R" "total_preorder_on alts Ri'" "i \<in> agents"
   shows   "is_pref_profile (R(i := Ri'))"
   using assms by (auto intro!: pref_profile_wf.wf_update)
 
-lemma agenda [simp,intro]: "agenda agents alts"
-  by (rule agenda_axioms)
+lemma election [simp,intro]: "election agents alts"
+  by (rule election_axioms)
 
 
 subsubsection \<open>Lotteries\<close>
@@ -77,10 +77,10 @@ lemma lottery_prob_alts: "p \<in> lotteries \<Longrightarrow> lottery_prob p alt
 
 
 context
-  fixes R assumes R: "complete_preorder_on alts R"
+  fixes R assumes R: "total_preorder_on alts R"
 begin
 
-interpretation R: complete_preorder_on alts R by fact
+interpretation R: total_preorder_on alts R by fact
 
 lemma Max_wrt_prefs_finite: "finite (Max_wrt R)"
   unfolding R.Max_wrt_preorder by simp
@@ -90,8 +90,8 @@ lemma Max_wrt_prefs_nonempty: "Max_wrt R \<noteq> {}"
 
 lemma maximal_imp_preferred:
   "x \<in> alts \<Longrightarrow> Max_wrt R \<subseteq> preferred_alts R x"
-  using R.complete
-  by (auto simp: R.Max_wrt_complete_preorder preferred_alts_def strongly_preferred_def)
+  using R.total
+  by (auto simp: R.Max_wrt_total_preorder preferred_alts_def strongly_preferred_def)
 
 end
 
@@ -99,18 +99,18 @@ end
 
 
 text \<open>
-  In the context of an agenda, a preference profile is a function that 
-  assigns to each agent her preference relation (which is a complete preorder)
+  In the context of an election, a preference profile is a function that 
+  assigns to each agent her preference relation (which is a total preorder)
 \<close>
 
 
 subsection \<open>Social Decision Schemes\<close>
 
 text \<open>
-  In the context of an agenda, a Social Decision Scheme (SDS) is a function that 
+  In the context of an election, a Social Decision Scheme (SDS) is a function that 
   maps preference profiles to lotteries on the alternatives.
 \<close> 
-locale social_decision_scheme = agenda agents alts 
+locale social_decision_scheme = election agents alts 
   for agents :: "'agent set" and alts :: "'alt set" +
   fixes sds :: "('agent, 'alt) pref_profile \<Rightarrow> 'alt lottery"
   assumes sds_wf: "is_pref_profile R \<Longrightarrow> sds R \<in> lotteries"
@@ -360,7 +360,7 @@ text \<open>
 locale strategyproof_sds = social_decision_scheme agents alts sds
   for agents :: "'agent set" and alts :: "'alt set" and sds +
   assumes strategyproof: 
-    "is_pref_profile R \<Longrightarrow> i \<in> agents \<Longrightarrow> complete_preorder_on alts Ri' \<Longrightarrow>
+    "is_pref_profile R \<Longrightarrow> i \<in> agents \<Longrightarrow> total_preorder_on alts Ri' \<Longrightarrow>
          \<not>manipulable_profile R i Ri'"  
 
 
@@ -386,7 +386,7 @@ definition strongly_strategyproof_profile
   "strongly_strategyproof_profile R i Ri' \<longleftrightarrow> sds R \<succeq>[SD (R i)] sds (R(i := Ri'))"
 
 lemma strongly_strategyproof_profileI [intro]:
-  assumes "is_pref_profile R" "complete_preorder_on alts Ri'" "i \<in> agents"
+  assumes "is_pref_profile R" "total_preorder_on alts Ri'" "i \<in> agents"
   assumes "\<And>x. x \<in> alts \<Longrightarrow> lottery_prob (sds (R(i := Ri'))) (preferred_alts (R i) x)
                                \<le> lottery_prob (sds R) (preferred_alts (R i) x)"
   shows "strongly_strategyproof_profile R i Ri'"
@@ -413,7 +413,7 @@ text \<open>
 locale strongly_strategyproof_sds = social_decision_scheme agents alts sds
   for agents :: "'agent set" and alts :: "'alt set" and sds +
   assumes strongly_strategyproof: 
-    "is_pref_profile R \<Longrightarrow> i \<in> agents \<Longrightarrow> complete_preorder_on alts Ri' \<Longrightarrow>
+    "is_pref_profile R \<Longrightarrow> i \<in> agents \<Longrightarrow> total_preorder_on alts Ri' \<Longrightarrow>
          strongly_strategyproof_profile R i Ri'"
 begin
 

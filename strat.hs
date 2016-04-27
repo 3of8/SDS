@@ -3,6 +3,8 @@ import Data.Function
 import Data.List
 import qualified Data.Text as T
 
+import StratWits
+
 xs = map nub . groupBy ((==) `on` (\(x,y,_) -> (x,y))) . sort $ (
      [(29, 39, Just 1),
       (39, 29, Just 1),
@@ -105,7 +107,10 @@ xs = map nub . groupBy ((==) `on` (\(x,y,_) -> (x,y))) . sort $ (
       (2, 38, Just 1),
       (31, 38, Just 1),
       (45, 31, Just 2)] :: [(Integer, Integer, Maybe Integer)])
-        
+
+lookupWits (a,b) = [(a, b, i, prefs, sigma) | (p, q, i, prefs, sigma) <- wits, ("R" ++ show a, "R" ++ show b) == (p,q)]
+
+wits' = concatMap (\(a,b,_) -> lookupWits (a,b)) (concat xs)
 
 main = mapM_ putStrLn ["R" ++ show i ++ "_R" ++ show j ++ ".strategyproofness(" ++ show k ++ ")" | (i,j,Just k) <- concat xs]
 

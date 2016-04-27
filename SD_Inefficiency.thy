@@ -68,11 +68,11 @@ proof -
   
   have "q \<succeq>[SD(R i)] p" if i: "i \<in> agents" for i
   proof -
-    from i interpret finite_complete_preorder_on alts "R i" by simp
+    from i interpret finite_total_preorder_on alts "R i" by simp
     from i lotteries q'(1) q'(3)[OF i] q_wf p'_wf \<epsilon> show ?thesis
       by (fastforce simp: SD_iff_expected_utilities_le expected_utility)
   qed
-  moreover from \<open>i \<in> agents\<close> interpret finite_complete_preorder_on alts "R i" by simp
+  moreover from \<open>i \<in> agents\<close> interpret finite_total_preorder_on alts "R i" by simp
     from lotteries q'(1,4) q_wf p'_wf \<epsilon> have "q \<succ>[SD(R i)] p"
     by (force simp: SD_iff_expected_utilities_le expected_utility not_le strongly_preferred_def)
   ultimately show ?thesis using q_wf \<open>i \<in> agents\<close> unfolding SD_efficient_def by blast
