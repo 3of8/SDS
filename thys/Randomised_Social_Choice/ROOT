@@ -1,4 +1,4 @@
-session "Social_Choice_Theory" = "HOL-Probability" +
+session "Randomised_Social_Choice" = "HOL-Probability" +
   options [document = pdf]
   theories
     Social_Choice_Theory

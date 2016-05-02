@@ -1,4 +1,9 @@
+(*  
+  Title:    Order_Predicates.thy
+  Author:   Manuel Eberl, TU München
 
+  Locales for order relations modelled as predicates (as opposed to sets of pairs).
+*)
 section \<open>Order relations as binary predicates\<close>
 
 theory Order_Predicates
@@ -7,6 +12,7 @@ imports
   "~~/src/HOL/Library/Disjoint_Sets"
   "~~/src/HOL/Library/Permutations"
   Missing_Permutations
+  "../List-Index/List_Index"
 begin
 
 (* TODO: Move *)

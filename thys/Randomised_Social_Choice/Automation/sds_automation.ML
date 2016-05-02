@@ -213,7 +213,7 @@ fun gen_prepare_sdeff_conditions find_supports sds (info : info) lthy =
         val supp_set = HOLogic.mk_set altT supp
         val lott = 
           lott
-          |> map (HOLogic.mk_prod o apsnd (MyRat.mk_rat_number @{typ Real.real}))
+          |> map (HOLogic.mk_prod o apsnd (Rat_Utils.mk_rat_number @{typ Real.real}))
           |> HOLogic.mk_list (HOLogic.mk_prodT (altT, @{typ Real.real}))
       in
         (@{thm SD_inefficient_support_aux} OF [wf_raw_thm, def_thm])
@@ -301,7 +301,7 @@ val derive_ex_post_conditions_cmd =
   gen_derive_support_conditions_cmd [prepare_find_ex_post_conditions]
 
 fun pretty_rat r =
-  case MyRat.to_quotient r of
+  case Rat.quotient_of_rat r of
     (x, 1) => Pretty.str (Int.toString x)
   | (x, y) => Pretty.strs [Int.toString x, "/", Int.toString y]
 
@@ -374,7 +374,7 @@ val _ =
 
 
 val parse_rat =
-  (Parse.int -- Scan.optional (Args.$$$ "/" |-- Parse.int) 1) >> MyRat.of_quotient
+  (Parse.int -- Scan.optional (Args.$$$ "/" |-- Parse.int) 1) >> Rat.rat_of_quotient
 
 val parse_support = Args.bracks (Parse.list1 Parse.term)
 
@@ -437,7 +437,8 @@ fun prepare_strategyproofness_intro_thms ctxt dist_limit sds_san_thm (ps : info 
         NONE => manipulations
       | SOME l =>
           map (fn (p1, p2, ms) => (p1, p2, filter (fn x => #3 x <= l) ms)) manipulations
-    val pretty_term_list = map (Pretty.quote o Syntax.pretty_term ctxt) #> Pretty.list "[" "]"
+    (* For Debugging/extracting witnesses only *)
+(*    val pretty_term_list = map (Pretty.quote o Syntax.pretty_term ctxt) #> Pretty.list "[" "]"
     val pretty_perm = 
       map (fn (a,b) => Pretty.block [Pretty.str "(", Pretty.quote (Syntax.pretty_term ctxt a), 
         Pretty.str ",", Pretty.quote (Syntax.pretty_term ctxt b), Pretty.str ")"])
@@ -449,11 +450,14 @@ fun prepare_strategyproofness_intro_thms ctxt dist_limit sds_san_thm (ps : info 
           [Pretty.str "(", Binding.pretty (#binding p1), Pretty.str ",",
            Binding.pretty (#binding p2), Pretty.str ",",
            Pretty.quote (Syntax.pretty_term ctxt i), Pretty.str ",",
-           Pretty.list "[" "]" (map pretty_term_list (the (AList.lookup op aconv (#raw p2) j))), Pretty.str ",",
+           Pretty.list "[" "]" (map pretty_term_list (the (AList.lookup op aconv (#raw p1) i))), Pretty.str ",",
+           Pretty.list "[" "]" (map pretty_term_list (
+            map (map (apply_reverse_permutation op aconv sigma)) (the (AList.lookup op aconv (#raw p2) j)))), Pretty.str ",",
            pretty_perm sigma, Pretty.str ")"]
           |> Pretty.block
           ))
         |> flat |> Pretty.list "[" "]" |> Pretty.writeln
+*)
     fun mk_binding (p1, p2) =
       Binding.qualify true 
         (Binding.name_of (#binding p1) ^ "_" ^ Binding.name_of (#binding p2)) 

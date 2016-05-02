@@ -2,7 +2,70 @@ theory QSOpt_Exact
 imports Complex_Main
 begin
 
-ML_file "rat.ML"
+(*ML_file "rat.ML"*)
+
+ML \<open>
+
+signature RAT_UTILS =
+sig
+  val rat_to_string : Rat.rat -> string
+  val pretty_rat : Rat.rat -> string
+  val string_to_rat : string -> Rat.rat option
+  val mk_rat_number : typ -> Rat.rat -> term
+  val dest_rat_number : term -> Rat.rat
+end
+
+structure Rat_Utils : RAT_UTILS =
+struct
+
+fun rat_to_string r =
+  case Rat.quotient_of_rat r of
+    (a, 1) => Int.toString a
+  | (a, b) => (if a < 0 then "~ " else "") ^ Int.toString (abs a) ^ " / " ^ Int.toString b
+
+fun pretty_rat r =
+  case Rat.quotient_of_rat r of
+    (a, 1) => (if a < 0 then "-" else "") ^ Int.toString a
+  | (a, b) => (if a < 0 then "- " else "") ^ Int.toString (abs a) ^ " / " ^ Int.toString b
+
+fun string_to_rat s =
+  let
+    val (s1, s2') = s |> Substring.full |> Substring.splitl (fn x => x <> #"/") 
+    val (s1, s2) = (s1, s2') |> apsnd (Substring.triml 1) |> apply2 Substring.string
+  in
+    if Substring.isEmpty s2' then
+      Option.map Rat.rat_of_int (Int.fromString s1)
+    else
+      Option.mapPartial (fn x => Option.map (fn y => Rat.rat_of_quotient (x, y)) 
+        (Int.fromString s2)) (Int.fromString s1)
+  end
+
+fun dest_num x = 
+  case x of 
+    Const (@{const_name "Code_Numeral.int_of_integer"}, _) $ x => dest_num x
+  | _ => HOLogic.dest_number x
+
+fun dest_rat_number t =
+  case t of 
+    (Const (@{const_name "Rings.divide_class.divide"},_)) $ a $ b
+      => Rat.rat_of_quotient (snd (dest_num a), snd (dest_num b))
+  | (Const (@{const_name "Groups.uminus_class.uminus"},_)) $ a 
+      => Rat.neg (dest_rat_number a)
+  | (Const (@{const_name "Rat.field_char_0_class.of_rat"},_)) $ a => dest_rat_number a
+  |  (Const (@{const_name "Rat.Frct"}, _) $ (Const (@{const_name "Product_Type.Pair"}, _) $ a $ b))
+      => Rat.rat_of_quotient (snd (dest_num a), snd (dest_num b))
+  | _ => Rat.rat_of_int (snd (dest_num t));
+
+fun mk_rat_number ty r =
+  case Rat.quotient_of_rat r of
+    (a, 1) => HOLogic.mk_number ty a
+  | (a, b) => 
+      Const (@{const_name Rings.divide_class.divide}, ty --> ty --> ty) $ 
+        HOLogic.mk_number ty a $ HOLogic.mk_number ty b
+
+end
+
+\<close>
 
 ML \<open>
 
@@ -315,13 +378,13 @@ end
 structure Rat_Linear_Program = Linear_Program(
 struct
 
-type T = MyRat.rat
+type T = Rat.rat
 
-val print = MyRat.to_string
-val read = MyRat.from_string
-val compare = MyRat.compare
-val from_int = MyRat.from_int
-val negate = MyRat.rneg
+val print = Rat_Utils.rat_to_string
+val read = Rat_Utils.string_to_rat
+val compare = Rat.ord
+val from_int = Rat.rat_of_int
+val negate = Rat.neg
 
 end)
 

@@ -2,15 +2,14 @@ theory Missing_Permutations
 imports 
   Missing_Multiset
   "~~/src/HOL/Library/Permutations"
-  "afp/Executable_Permutations"
 begin
+
+lemma permutes_not_in:
+  assumes "f permutes S" "x \<notin> S" shows "f x = x"
+  using assms by (auto simp: permutes_def)
 
 lemma permutes_vimage: "f permutes A \<Longrightarrow> f -` A = A"
   by (simp add: bij_vimage_eq_inv_image permutes_bij permutes_image[OF permutes_inv])
-
-lemma lists_succ_permutes':
-  "distincts xss \<Longrightarrow> A = (\<Union>xs\<in>set xss. set xs) \<Longrightarrow> lists_succ xss permutes A"
- using lists_succ_permutes by simp
 
 lemma permutes_inj_on: "f permutes S \<Longrightarrow> inj_on f A"
   unfolding permutes_def inj_on_def by auto

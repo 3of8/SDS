@@ -10,12 +10,12 @@ section \<open>Social Decision Schemes\<close>
 theory Social_Decision_Schemes
 imports 
   Complex_Main 
-  Probability 
+  "~~/src/HOL/Probability/Probability" 
   Preference_Profiles
   Order_Predicates
   Missing_PMF
   Stochastic_Dominance
-  SD_Inefficiency
+  SD_Efficiency
 begin
 
 subsection \<open>Basic Social Choice definitions\<close>

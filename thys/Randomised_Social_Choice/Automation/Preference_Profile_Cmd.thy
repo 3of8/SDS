@@ -2,8 +2,8 @@
   Title:    Preference_Profiles_Cmd.thy
   Author:   Manuel Eberl, TU München
 
-  Provides the preference_profile command that defines a preference profile,
-  proves well-formedness and provides some useful rules for it.
+  Provides the preference_profile command that defines preference profiles,
+  proves well-formedness, and provides some useful lemmas for them.
 *)
 
 section \<open>Automatic definition of Preference Profiles\<close>
@@ -11,10 +11,9 @@ section \<open>Automatic definition of Preference Profiles\<close>
 theory Preference_Profile_Cmd
 imports
   Complex_Main
-  Probability
-  Social_Decision_Schemes
-  Preference_Profiles
-  Missing_Permutations
+  "../Social_Decision_Schemes"
+  "../Preference_Profiles"
+  "../Missing_Permutations"
   QSOpt_Exact
 keywords
   "preference_profile" :: thy_goal
@@ -283,6 +282,7 @@ fun fold_accum f xs s =
 
 fun preference_profile ((agents, alts), args) lthy =
   let
+    fun qualify pref suff = Binding.qualify true (Binding.name_of pref) (Binding.name suff)
     val (results, lthy) = fold_accum (preference_profile_aux agents alts) args lthy
     val prefs_terms = map #1 results
     val wf_props = map #2 results
@@ -312,7 +312,7 @@ fun preference_profile ((agents, alts), args) lthy =
     fun after_qed [wf_thms_raw] lthy =
       let
         fun prep_thms attrs suffix (thms : thm list) binding = 
-          (((Binding.suffix_name suffix binding, attrs), [(thms,[])]))
+          (((qualify binding suffix, attrs), [(thms,[])]))
         fun prep_thmss simp suffix thmss = map2 (prep_thms simp suffix) thmss bindings
         fun notes thmss suffix attrs lthy = 
             Local_Theory.notes (prep_thmss attrs suffix thmss) lthy |> snd
@@ -337,9 +337,9 @@ fun preference_profile ((agents, alts), args) lthy =
         val infos = mk_infos bindings prefs_terms raws defs wf_thms wf_thms_raw eval_thmss
       in
         lthy 
-        |> note wf_thms_raw "_wf_raw" []
-        |> note wf_thms "_wf" @{attributes [simp]} 
-        |> notes eval_thmss "_eval" []
+        |> note wf_thms_raw "wf_raw" []
+        |> note wf_thms "wf" @{attributes [simp]} 
+        |> notes eval_thmss "eval" []
         |> Local_Theory.declaration {syntax = false, pervasive = false}
              (fn m => add_infos (map (fn (t,i) => (Morphism.term m t, transform_info i m)) infos))
       end

@@ -572,22 +572,21 @@ lemma permute_profile_from_table:
 proof
   fix i
   (* TODO: Clean up this mess *)
-  from assms have wf': "prefs_from_table_wf agents alts (map (\<lambda>(x, y). (x, map (op ` \<sigma>) y)) xss)"
-    apply (intro prefs_from_table_wfI)
-    apply (simp_all add: prefs_from_table_wf_def) [2]
-    apply (simp add: o_def case_prod_unfold prefs_from_table_wf_def)
-    apply (simp add: o_def case_prod_unfold prefs_from_table_wf_def)
-    apply (simp add: o_def case_prod_unfold)
-    apply (elim imageE)
-    apply (simp add: image_Union [symmetric] prefs_from_table_wf_def permutes_image)
-    apply (simp add: o_def case_prod_unfold)
-    apply (elim imageE)
-    apply (simp add: is_finite_weak_ranking_def is_weak_ranking_iff distinct_map
-             permutes_inj_on inj_on_image)
-    apply (auto simp: prefs_from_table_wf_def is_finite_weak_ranking_def 
-                      is_weak_ranking_iff permutes_inj_on inj_on_image
-                intro!: disjoint_image)
-    done
+  have wf': "prefs_from_table_wf agents alts (map (\<lambda>(x, y). (x, map (op ` \<sigma>) y)) xss)"
+  proof (intro prefs_from_table_wfI, goal_cases)
+    case (5 xs)
+    then obtain y where "y \<in> set xss" "xs = map (op ` \<sigma>) (snd y)"
+      by (auto simp add: o_def case_prod_unfold)
+    with assms show ?case
+      by (simp add: image_Union [symmetric] prefs_from_table_wf_def permutes_image o_def case_prod_unfold)
+  next
+    case (6 xs)
+    then obtain y where "y \<in> set xss" "xs = map (op ` \<sigma>) (snd y)"
+      by (auto simp add: o_def case_prod_unfold)
+    with assms show ?case
+      by (auto simp: is_finite_weak_ranking_def is_weak_ranking_iff prefs_from_table_wf_def
+            distinct_map permutes_inj_on inj_on_image intro!: disjoint_image)
+  qed (insert assms, simp_all add: image_Union [symmetric] prefs_from_table_wf_def permutes_image o_def case_prod_unfold)
   show "?f i = ?g i"
   proof (cases "i \<in> agents")
     assume "i \<notin> agents"

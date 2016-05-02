@@ -3,7 +3,7 @@ section \<open>Stochastic Dominance\<close>
 theory Stochastic_Dominance
 imports 
   Complex_Main 
-  Probability 
+  "~~/src/HOL/Probability/Probability" 
   Missing_PMF
   Preference_Profiles
 begin
@@ -256,6 +256,8 @@ end
 
 subsubsection \<open>SD efficient lotteries\<close>
 
+(* Move this *)
+
 definition SD_efficient :: "('agent, 'alt) pref_profile \<Rightarrow> 'alt lottery \<Rightarrow> bool" where
   SD_efficient_auxdef: 
     "SD_efficient R p \<longleftrightarrow> \<not>(\<exists>q\<in>lotteries_on {x. \<exists>i. R i x x}. q \<succ>[Pareto (SD \<circ> R)] p)"
@@ -264,6 +266,7 @@ definition SD_efficient :: "('agent, 'alt) pref_profile \<Rightarrow> 'alt lotte
 context pref_profile_wf
 begin
 
+(* TODO: Move *)
 lemma not_outside: 
   assumes "x \<preceq>[R i] y"
   shows   "i \<in> agents" "x \<in> alts" "y \<in> alts"

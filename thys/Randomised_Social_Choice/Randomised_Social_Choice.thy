@@ -1,7 +1,7 @@
-theory Social_Choice_Theory
+theory Randomised_Social_Choice
 imports
   Complex_Main
-  SDS_Impossibility
+  SDS_Lowering
   Random_Dictatorship
   Random_Serial_Dictatorship
 begin

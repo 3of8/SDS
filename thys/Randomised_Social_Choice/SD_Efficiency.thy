@@ -1,6 +1,18 @@
-theory SD_Inefficiency
+(*  
+  Title:    SD_Efficiency.thy
+  Author:   Manuel Eberl, TU München
+
+  Characterisation of SD-efficiency.
+*)
+
+theory SD_Efficiency
 imports Complex_Main Preference_Profiles Missing_PMF Stochastic_Dominance
 begin
+
+(* 
+  TODO: Perhaps a general concept of "efficiency" can be introduced, 
+  parametrised over the way in which two lotteries are compared.
+*)
 
 context pref_profile_wf
 begin
