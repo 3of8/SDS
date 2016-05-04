@@ -11,7 +11,7 @@
 section \<open>Random Permutations\<close>
 
 theory Random_Permutations
-imports Probability Set_Permutations
+imports "~~/src/HOL/Probability/Probability" Set_Permutations
 begin
 
 (* TODO Move *)

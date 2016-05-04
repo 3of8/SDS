@@ -352,7 +352,7 @@ fun prove_sd_inefficient_supports_cmd thm xs lthy =
 
 val _ =
   Outer_Syntax.local_theory_to_proof @{command_keyword derive_support_conditions}
-    "automatically derive conditions for the support of preference profiles"
+    "automatically derive ex-post- and SD-Efficiency conditions for the support of preference profiles"
     (optional_thms_parser -- Scan.repeat1 Parse.term >> 
       (fn (thms, ts) => fn ctxt =>
          let
@@ -369,7 +369,7 @@ val _ =
          let
            val thm = Option.map (Proof_Context.get_fact ctxt o fst) thm
          in
-           derive_support_conditions_cmd thm ts ctxt
+           derive_ex_post_conditions_cmd thm ts ctxt
          end));
 
 
@@ -382,7 +382,7 @@ val parse_lottery = Args.bracks (Parse.list1 (Parse.term --| Args.colon -- parse
 
 val _ =
   Outer_Syntax.local_theory @{command_keyword find_inefficient_supports}
-    "automatically find SD-inefficient supports"
+    "automatically find SD-inefficient supports using linear programming"
     (Scan.repeat1 Parse.term >> (* TODO: is local_theory the right approach here? *)
       (fn ts => fn ctxt => 
          let
@@ -393,7 +393,7 @@ val _ =
   
 val _ =
   Outer_Syntax.local_theory_to_proof @{command_keyword prove_inefficient_supports}
-    "prove SD-inefficient supports using a witness lottery"
+    "prove ex-post- or SD-inefficient supports (using witness lotteries for the latter)"
     (optional_thms_parser -- Parse.and_list1 (Parse.term -- parse_support -- 
        Scan.option (Args.$$$ "witness" |-- Args.colon |-- parse_lottery)) >> 
       (fn (thms, ts) => fn ctxt =>

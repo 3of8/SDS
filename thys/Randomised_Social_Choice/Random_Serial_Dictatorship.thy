@@ -428,7 +428,7 @@ sublocale RSD: social_decision_scheme agents alts RSD
   by unfold_locales (simp_all add: lotteries_on_def)
 
 
-subsection \<open>RD extension\<close>
+subsubsection \<open>RD extension\<close>
 
 lemma RSD_extends_RD:
   assumes wf: "is_pref_profile R" and unique: "has_unique_favorites R"

@@ -53,6 +53,15 @@ lemma prefs_wf' [simp]:
   using prefs_wf[of i]
   by (simp_all add: finite_total_preorder_on_def total_preorder_on_def del: prefs_wf)
 
+lemma not_outside: 
+  assumes "x \<preceq>[R i] y"
+  shows   "i \<in> agents" "x \<in> alts" "y \<in> alts"
+proof -
+  from assms show "i \<in> agents" by (cases "i \<in> agents") auto
+  then interpret preorder_on alts "R i" by simp
+  from assms show "x \<in> alts" "y \<in> alts" by (simp_all add: not_outside)
+qed
+
 sublocale preorder_family agents alts R
   by (intro preorder_family.intro) simp_all
 
@@ -264,23 +273,6 @@ subsection \<open>Favourite alternatives\<close>
 
 definition favorites :: "('agent, 'alt) pref_profile \<Rightarrow> 'agent \<Rightarrow> 'alt set" where
   "favorites R i = Max_wrt (R i)"
-
-(* TODO Move *)
-definition is_singleton :: "'a set \<Rightarrow> bool" where
-  "is_singleton A \<longleftrightarrow> (\<exists>x. A = {x})"
-
-lemma is_singletonI [simp, intro!]: "is_singleton {x}"
-  unfolding is_singleton_def by simp
-
-lemma is_singletonE: "is_singleton A \<Longrightarrow> (\<And>x. A = {x} \<Longrightarrow> P) \<Longrightarrow> P"
-  unfolding is_singleton_def by blast
-
-lemma is_singleton_altdef: "is_singleton A \<longleftrightarrow> card A = 1"
-  unfolding is_singleton_def
-  by (auto elim!: card_1_singletonE is_singletonE simp del: One_nat_def)
-  
-lemma is_singleton_the_elem: "is_singleton A \<longleftrightarrow> A = {the_elem A}"
-  by (auto simp: is_singleton_def)
 
 definition favorite :: "('agent, 'alt) pref_profile \<Rightarrow> 'agent \<Rightarrow> 'alt" where
   "favorite R i = the_elem (favorites R i)"
@@ -571,7 +563,6 @@ lemma permute_profile_from_table:
              prefs_from_table (map (\<lambda>(x,y). (x, map (op ` \<sigma>) y)) xss)" (is "?f = ?g")
 proof
   fix i
-  (* TODO: Clean up this mess *)
   have wf': "prefs_from_table_wf agents alts (map (\<lambda>(x, y). (x, map (op ` \<sigma>) y)) xss)"
   proof (intro prefs_from_table_wfI, goal_cases)
     case (5 xs)

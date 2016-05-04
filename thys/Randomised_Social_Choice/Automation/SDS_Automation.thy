@@ -1,3 +1,14 @@
+(*
+  File:    SDS_Automation.thy
+  Author:  Manuel Eberl <eberlm@in.tum.de>
+
+  This theory provides a number of commands to automatically derive restrictions on the 
+  results of Social Decision Schemes fulfilling properties like Anonymity, Neutrality, 
+  Ex-post- or SD-efficiency, and SD-Strategy-Proofness.
+*)
+
+section \<open>Automatic Fact Gathering for Social Decision Schemes\<close>
+
 theory SDS_Automation
 imports Preference_Profile_Cmd
 keywords 
@@ -8,6 +19,33 @@ keywords
   "prove_inefficient_supports"
   "derive_strategyproofness_conditions" :: thy_goal
 begin
+
+text \<open>
+  We now provide the following commands to automatically derive restrictions on the results
+  of Social Decision Schemes satisfying Anonymity, Neutrality, Efficiency, or Strategy-Proofness:
+  \begin{description}
+    \item[@{command derive_orbit_equations}] to derive equalities arising from automorphisms of the 
+      given profiles due to Anonymity and Neutrality
+    \item[@{command derive_ex_post_conditions}] to find all Pareto losers and the given profiles and 
+      derive the facts that they must be assigned probability 0 by any \textit{ex-post}-efficient
+      SDS
+    \item[@{command find_inefficient_supports}] to use Linear Programming to find all minimal SD-inefficient 
+      (but not \textit{ex-post}-inefficient) supports in the given profiles and output a 
+      corresponding witness lottery for each of them
+    \item[@{command prove_inefficient_supports}] to prove a specified set of support conditions arising from
+      \textit{ex-post}- or \textit{SD}-Efficiency. For conditions arising from \textit{SD}-Efficiency,
+      a witness lottery must be specified (e.\,g. as computed by @{command derive_orbit_equations}).
+    \item[@{command derive_support_conditions}] to automatically find and prove all support conditions
+      arising from \textit{ex-post-} and \textit{SD}-Efficiency
+    \item [@{command derive_strategyproofness_conditions}] to automatically derive all conditions
+      arising from weak Strategy-Proofness and any manipulations between the given preference 
+      profiles. An optional maximum manipulation size can be specified.
+  \end{description}
+  All commands except @{command find_inefficient_supports} open a proof state and leave behind 
+  proof obligations for the user to discharge. This should always be possible using the Simplifier,
+  possibly with a few additional rules, depending on the context.
+ 
+\<close>
 
 lemma disj_False_right: "P \<or> False \<longleftrightarrow> P" by simp
 

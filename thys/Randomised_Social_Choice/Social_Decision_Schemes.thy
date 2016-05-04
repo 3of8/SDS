@@ -52,8 +52,6 @@ lemma election [simp,intro]: "election agents alts"
   by (rule election_axioms)
 
 
-subsubsection \<open>Lotteries\<close>
-
 text \<open>
   The set of lotteries, i.e. the probability mass functions on the type @{typ "'alt"}
   whose support is a subset of the alternative set. 

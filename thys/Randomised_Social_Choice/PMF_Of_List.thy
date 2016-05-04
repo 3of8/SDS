@@ -8,7 +8,7 @@
 section \<open>Creating PMFs from lists\<close>
 
 theory PMF_Of_List
-imports Complex_Main Probability
+imports Complex_Main "~~/src/HOL/Probability/Probability"
 begin
 
 (* TODO Move *)

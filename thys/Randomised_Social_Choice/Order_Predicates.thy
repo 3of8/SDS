@@ -4,7 +4,7 @@
 
   Locales for order relations modelled as predicates (as opposed to sets of pairs).
 *)
-section \<open>Order relations as binary predicates\<close>
+section \<open>Order Relations as Binary Predicates\<close>
 
 theory Order_Predicates
 imports 
@@ -19,7 +19,30 @@ begin
 lemma assumes "disjoint (A \<union> B)"
       shows   disjoint_unionD1: "disjoint A" and disjoint_unionD2: "disjoint B"
   using assms by (simp_all add: disjoint_def)
+
+definition is_singleton :: "'a set \<Rightarrow> bool" where
+  "is_singleton A \<longleftrightarrow> (\<exists>x. A = {x})"
+
+lemma is_singletonI [simp, intro!]: "is_singleton {x}"
+  unfolding is_singleton_def by simp
+
+lemma is_singletonI': "A \<noteq> {} \<Longrightarrow> (\<And>x y. x \<in> A \<Longrightarrow> y \<in> A \<Longrightarrow> x = y) \<Longrightarrow> is_singleton A"
+  unfolding is_singleton_def by blast
+
+lemma is_singletonE: "is_singleton A \<Longrightarrow> (\<And>x. A = {x} \<Longrightarrow> P) \<Longrightarrow> P"
+  unfolding is_singleton_def by blast
+
+lemma is_singleton_altdef: "is_singleton A \<longleftrightarrow> card A = 1"
+  unfolding is_singleton_def
+  by (auto elim!: card_1_singletonE is_singletonE simp del: One_nat_def)
+  
+lemma is_singleton_the_elem: "is_singleton A \<longleftrightarrow> A = {the_elem A}"
+  by (auto simp: is_singleton_def)
+
 (* END TODO *)
+
+
+subsection \<open>Basic Operations on Relations\<close>
 
 text \<open>The type of binary relations\<close>
 type_synonym 'a relation = "'a \<Rightarrow> 'a \<Rightarrow> bool"
@@ -74,9 +97,9 @@ lemma restrict_relation_carrier [simp]:
 end
   
 
-subsection \<open>Complete preorders\<close>
+subsection \<open>Total preorders\<close>
 
-text \<open>Complete preorders are preorders where any two elements are comparable.\<close>
+text \<open>Total preorders are preorders where any two elements are comparable.\<close>
 locale total_preorder_on = preorder_on +
   assumes total: "x \<in> carrier \<Longrightarrow> y \<in> carrier \<Longrightarrow> le x y \<or> le y x"
 begin
@@ -133,6 +156,15 @@ lemma (in total_preorder_on) not_weakly_preferred_iff:
 lemma (in total_preorder_on) not_strongly_preferred_iff:
   "a \<in> carrier \<Longrightarrow> b \<in> carrier \<Longrightarrow> \<not>a \<prec>[le] b \<longleftrightarrow> b \<preceq>[le] a"
   using total[of a b] by (auto simp: strongly_preferred_def)
+
+
+
+subsection \<open>Orders\<close>
+
+locale order_on = preorder_on +
+  assumes antisymmetric: "le x y \<Longrightarrow> le y x \<Longrightarrow> x = y"
+
+locale linorder_on = order_on carrier le + total_preorder_on carrier le for carrier le
 
 
 subsection \<open>Maximal elements\<close>
@@ -313,6 +345,12 @@ next
       by (intro of_weak_ranking.intros[of "Suc i" "Suc j"]) auto
   qed
 qed
+
+lemma of_weak_ranking_indifference:
+  assumes "A \<in> set xs" "x \<in> A" "y \<in> A"
+  shows   "x \<preceq>[of_weak_ranking xs] y"
+  using assms by (induction xs) (auto simp: of_weak_ranking_Cons)
+
 
 lemma of_weak_ranking_map:
   "map_relation f (of_weak_ranking xs) = of_weak_ranking (map (op -` f) xs)"
@@ -889,35 +927,40 @@ proof -
   thus ?thesis by (simp add: weak_ranking_total_preorder)
 qed
 
-definition ranking_index :: "'a \<Rightarrow> nat" where
-  "ranking_index x = find_index (\<lambda>A. x \<in> A) (weak_ranking le)"
+text \<open>
+  The index in weak ranking of a given alternative. An element with index 0 is 
+  first-ranked; larger indices correspond to less-preferred alternatives.
+\<close>
+definition weak_ranking_index :: "'a \<Rightarrow> nat" where
+  "weak_ranking_index x = find_index (\<lambda>A. x \<in> A) (weak_ranking le)"
 
-lemma nth_ranking_index:
+lemma nth_weak_ranking_index:
   assumes "x \<in> carrier"
-  shows   "ranking_index x < length (weak_ranking le)" "x \<in> weak_ranking le ! ranking_index x"
+  shows   "weak_ranking_index x < length (weak_ranking le)" 
+          "x \<in> weak_ranking le ! weak_ranking_index x"
 proof -
-  from assms weak_ranking_Union show "ranking_index x < length (weak_ranking le)"
-     unfolding ranking_index_def by (auto simp add: find_index_less_size_conv)
-  thus "x \<in> weak_ranking le ! ranking_index x" unfolding ranking_index_def
+  from assms weak_ranking_Union show "weak_ranking_index x < length (weak_ranking le)"
+     unfolding weak_ranking_index_def by (auto simp add: find_index_less_size_conv)
+  thus "x \<in> weak_ranking le ! weak_ranking_index x" unfolding weak_ranking_index_def
     by (rule nth_find_index)
 qed
 
 lemma ranking_index_eqI:
-  "i < length (weak_ranking le) \<Longrightarrow> x \<in> weak_ranking le ! i \<Longrightarrow> ranking_index x = i"
+  "i < length (weak_ranking le) \<Longrightarrow> x \<in> weak_ranking le ! i \<Longrightarrow> weak_ranking_index x = i"
   using weak_ranking_index_unique'[of "weak_ranking le" i x]
-  by (simp add: ranking_index_def weak_ranking_total_preorder)
+  by (simp add: weak_ranking_index_def weak_ranking_total_preorder)
 
 lemma ranking_index_le_iff [simp]:
   assumes "x \<in> carrier" "y \<in> carrier"
-  shows   "ranking_index x \<ge> ranking_index y \<longleftrightarrow> le x y"
+  shows   "weak_ranking_index x \<ge> weak_ranking_index y \<longleftrightarrow> le x y"
 proof -
   have "le x y \<longleftrightarrow> of_weak_ranking (weak_ranking le) x y"
     by (simp add: weak_ranking_total_preorder)
-  also have "\<dots> \<longleftrightarrow> ranking_index x \<ge> ranking_index y"
+  also have "\<dots> \<longleftrightarrow> weak_ranking_index x \<ge> weak_ranking_index y"
   proof
-    assume "ranking_index x \<ge> ranking_index y"
+    assume "weak_ranking_index x \<ge> weak_ranking_index y"
     thus "of_weak_ranking (weak_ranking le) x y"
-      by (rule of_weak_ranking.intros) (simp_all add: nth_ranking_index assms)
+      by (rule of_weak_ranking.intros) (simp_all add: nth_weak_ranking_index assms)
   next
     assume "of_weak_ranking (weak_ranking le) x y"
     then obtain i j where 
@@ -925,7 +968,7 @@ proof -
       "x \<in> weak_ranking le ! j" "y \<in> weak_ranking le ! i"
       by (elim of_weak_ranking.cases) blast
     with ranking_index_eqI[of i] ranking_index_eqI[of j]
-      show "ranking_index x \<ge> ranking_index y" by simp
+      show "weak_ranking_index x \<ge> weak_ranking_index y" by simp
   qed
   finally show ?thesis ..
 qed
@@ -984,5 +1027,46 @@ definition preferred_alts :: "'alt relation \<Rightarrow> 'alt \<Rightarrow> 'al
 lemma (in preorder_on) preferred_alts_altdef:
   "preferred_alts le x = {y\<in>carrier. y \<succeq>[le] x}"
   by (auto simp: preferred_alts_def intro: not_outside)
+
+
+subsection \<open>Rankings\<close>
+
+(* TODO: Extend theory on rankings. Can probably mostly be based on
+   existing theory on weak rankings. *)
+
+definition ranking :: "'a relation \<Rightarrow> 'a list" where
+  "ranking R = map the_elem (weak_ranking R)"
+
+locale finite_linorder_on = linorder_on +
+  assumes finite_carrier [intro]: "finite carrier"
+begin
+
+sublocale finite_total_preorder_on carrier le
+  by unfold_locales (fact finite_carrier)
+
+lemma singleton_weak_ranking:
+  assumes "A \<in> set (weak_ranking le)"
+  shows   "is_singleton A"
+proof (rule is_singletonI')
+  from assms show "A \<noteq> {}"
+    using weak_ranking_total_preorder(1) is_weak_ranking_iff by auto
+next
+  fix x y assume "x \<in> A" "y \<in> A"
+  with assms 
+    have "x \<preceq>[of_weak_ranking (weak_ranking le)] y" "y \<preceq>[of_weak_ranking (weak_ranking le)] x"
+    by (auto intro!: of_weak_ranking_indifference)
+  with weak_ranking_total_preorder(2) 
+    show "x = y" by (intro antisymmetric) simp_all
+qed
+
+lemma weak_ranking_ranking: "weak_ranking le = map (\<lambda>x. {x}) (ranking le)"
+  unfolding ranking_def map_map o_def
+proof (rule sym, rule map_idI)
+  fix A assume "A \<in> set (weak_ranking le)"
+  hence "is_singleton A" by (rule singleton_weak_ranking)
+  thus "{the_elem A} = A" by (auto elim: is_singletonE)
+qed
+
+end
 
 end
