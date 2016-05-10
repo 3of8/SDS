@@ -255,44 +255,46 @@ text \<open>
   one agent strongly prefers the other lottery.
 \<close>
 lemma SD_efficient_def:
-  "SD_efficient R p \<longleftrightarrow>
-     \<not>(\<exists>q\<in>lotteries_on alts. (\<forall>i\<in>agents. q \<succeq>[SD(R i)] p) \<and> (\<exists>i\<in>agents. q \<succ>[SD(R i)] p))" 
-  (is "_ \<longleftrightarrow> ?rhs")
+  "SD_efficient R p \<longleftrightarrow> \<not>(\<exists>q\<in>lotteries_on alts. q \<succ>[Pareto (SD \<circ> R)] p)"
 proof -
   have "SD_efficient R p \<longleftrightarrow> \<not>(\<exists>q\<in>lotteries_on {x. \<exists>i. R i x x}. q \<succ>[Pareto (SD \<circ> R)] p)"
     unfolding SD_efficient_auxdef ..
   also from nonempty_agents obtain i where i: "i \<in> agents" by blast
   with preorder_on.refl[of alts "R i"] 
     have "{x. \<exists>i. R i x x} = alts" by (auto intro!: exI[of _ i] not_outside)
-  also have "(\<not> (\<exists>q\<in>lotteries_on alts. p \<prec>[Pareto (SD \<circ> R)] q)) \<longleftrightarrow> ?rhs"
-    by (subst SD.Pareto_strict_iff) simp_all
   finally show ?thesis .
 qed
+
+
+lemma SD_efficient_def':
+  "SD_efficient R p \<longleftrightarrow>
+     \<not>(\<exists>q\<in>lotteries_on alts. (\<forall>i\<in>agents. q \<succeq>[SD(R i)] p) \<and> (\<exists>i\<in>agents. q \<succ>[SD(R i)] p))" 
+  unfolding SD_efficient_def SD.Pareto_iff strongly_preferred_def [abs_def] by auto
 
 lemma SD_inefficientI:
   assumes "q \<in> lotteries_on alts" "\<And>i. i \<in> agents \<Longrightarrow> q \<succeq>[SD(R i)] p" 
           "i \<in> agents" "q \<succ>[SD(R i)] p"
   shows   "\<not>SD_efficient R p" 
-  using assms unfolding SD_efficient_def by blast
+  using assms unfolding SD_efficient_def' by blast
 
 lemma SD_inefficientI':
   assumes "q \<in> lotteries_on alts" "\<And>i. i \<in> agents \<Longrightarrow> q \<succeq>[SD(R i)] p" 
           "\<exists>i \<in> agents. q \<succ>[SD(R i)] p"
   shows   "\<not>SD_efficient R p" 
-  using assms unfolding SD_efficient_def by blast
+  using assms unfolding SD_efficient_def' by blast
 
 lemma SD_inefficientE:
   assumes "\<not>SD_efficient R p" 
   obtains q i where
     "q \<in> lotteries_on alts" "\<And>i. i \<in> agents \<Longrightarrow> q \<succeq>[SD(R i)] p" 
     "i \<in> agents" "q \<succ>[SD(R i)] p"
-  using assms unfolding SD_efficient_def by blast
+  using assms unfolding SD_efficient_def' by blast
    
 lemma SD_efficientD:
   assumes "SD_efficient R p" "q \<in> lotteries_on alts" 
       and "\<And>i. i \<in> agents \<Longrightarrow> q \<succeq>[SD(R i)] p" "\<exists>i\<in>agents. \<not>(q \<preceq>[SD(R i)] p)"
   shows False
-  using assms unfolding SD_efficient_def strongly_preferred_def by blast
+  using assms unfolding SD_efficient_def' strongly_preferred_def by blast
 
 lemma SD_efficient_singleton_iff:
   assumes [simp]: "x \<in> alts"

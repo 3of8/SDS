@@ -68,9 +68,14 @@ sublocale preorder_family agents alts R
 lemmas prefs_undefined' = not_in_dom'
 
 lemma wf_update:
-  "i \<in> agents \<Longrightarrow> finite_total_preorder_on alts Ri' \<Longrightarrow> 
-     pref_profile_wf agents alts (R(i := Ri'))"
-  by (auto intro!: pref_profile_wf.intro split: if_splits)
+  assumes "i \<in> agents" "total_preorder_on alts Ri'"
+  shows   "pref_profile_wf agents alts (R(i := Ri'))"
+proof -
+  interpret total_preorder_on alts Ri' by fact
+  from finite_alts have "finite_total_preorder_on alts Ri'" by unfold_locales
+  with assms show ?thesis
+    by (auto intro!: pref_profile_wf.intro split: if_splits)
+qed
 
 lemma wf_permute_agents:
   assumes "\<sigma> permutes agents"
@@ -190,6 +195,10 @@ qed
 lemma Pareto_strict_iff: 
   "x \<prec>[Pareto(R)] y \<longleftrightarrow> (\<forall>i\<in>dom. x \<preceq>[R i] y) \<and> (\<exists>i\<in>dom. x \<prec>[R i] y)"
   by (auto simp: strongly_preferred_def Pareto_iff nonempty_dom)
+
+lemma not_Pareto_strict_iff:
+  "\<not>(x \<prec>[Pareto(R)] y) \<longleftrightarrow> ((\<exists>i\<in>dom. \<not> R i x y) \<or> (\<forall>i\<in>dom. R i x y \<and> R i y x))"
+  unfolding Pareto_strict_iff by (auto simp: strongly_preferred_def)
 
 lemma Pareto_strictI:
   assumes "\<And>i. i \<in> dom \<Longrightarrow> x \<preceq>[R i] y" "i \<in> dom" "x \<prec>[R i] y"

@@ -1,0 +1,7 @@
+session "SDS_Impossibility" = "Randomised_Social_Choice" +
+  options [document = pdf]
+  theories
+    SDS_Impossibility
+  document_files
+    "root.tex"
+    "root.bib"
