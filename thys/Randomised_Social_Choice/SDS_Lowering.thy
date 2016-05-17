@@ -182,10 +182,11 @@ lemma lift_Pareto_SD_strict_iff:
   shows   "p \<prec>[Pareto(SD \<circ> R')] q \<longleftrightarrow> p \<prec>[Pareto(SD \<circ> R)] q"
   using assms by (simp add: strongly_preferred_def lift_Pareto_SD_iff)
 
-lemma lift_SD_efficient:
-  assumes p: "p \<in> lotteries_on alts" and eff: "SD_efficient R' p"
-  shows   "SD_efficient R p"
-proof -
+lemma lift_SD_efficient_iff:
+  assumes p: "p \<in> lotteries_on alts"
+  shows   "SD_efficient R' p \<longleftrightarrow> SD_efficient R p"
+proof
+  assume eff: "SD_efficient R' p"
   have "\<not>(q \<succ>[Pareto(SD \<circ> R)] p)" if q: "q \<in> lotteries_on alts" for q
   proof -
     from q election have q': "q \<in> lotteries_on alts'" by (blast intro: lotteries_on_subset)
@@ -193,6 +194,26 @@ proof -
     with p q show ?thesis by (simp add: lift_Pareto_SD_strict_iff)
   qed
   thus "SD_efficient R p" by (simp add: R.SD_efficient_def)
+next
+  assume eff: "SD_efficient R p"
+  have "\<not>(q \<succ>[Pareto(SD \<circ> R')] p)" if q: "q \<in> lotteries_on alts'" for q
+  proof
+    assume less: "q \<succ>[Pareto(SD \<circ> R')] p"
+    from R'.SD_efficient_lottery_exists[OF q] guess q' . note q' = this
+    have "x \<notin> set_pmf q'" if x: "x \<in> alts' - alts" for x
+    proof -
+      from x have "x \<in> pareto_losers R'" by (simp add: pareto_losers_lift_pref_profile)
+      with R'.SD_efficient_no_pareto_loser[OF q'(3,1)] show "x \<notin> set_pmf q'" by blast
+    qed
+    with q' have "q' \<in> lotteries_on alts" by (auto simp: lotteries_on_def)
+    moreover from q' less have "q' \<succ>[Pareto(SD \<circ> R')] p" 
+      by (auto intro: R'.SD.Pareto.strict_weak_trans)
+    with \<open>q' \<in> lotteries_on alts\<close> p have "q' \<succ>[Pareto(SD \<circ> R)] p"
+      by (subst (asm) lift_Pareto_SD_strict_iff)
+    ultimately have "\<not>SD_efficient R p" by (auto simp: R.SD_efficient_def)
+    with eff show False by contradiction
+  qed
+  thus "SD_efficient R' p" by (simp add: R'.SD_efficient_def)
 qed
 
 end
@@ -331,7 +352,7 @@ proof
   interpret R: pref_profile_wf agents' alts' R by fact
   from R_wf agents'_subset alts'_subset show "SD_efficient R (lowered R)"
     unfolding lowered_def o_def
-    by (rule lift_SD_efficient)
+    by (subst lift_SD_efficient_iff [symmetric])
        (insert SD_efficient R_wf lowered.sds_wf[OF R_wf], auto simp: lowered_def)
 qed
 

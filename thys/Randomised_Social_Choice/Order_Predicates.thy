@@ -149,6 +149,20 @@ abbreviation (input) weakly_not_preferred ("_ \<succeq>[_] _" [51,10,51] 60) whe
 abbreviation (input) strongly_not_preferred ("_ \<succ>[_] _" [51,10,51] 60) where
   "a \<succ>[R] b \<equiv> b \<prec>[R] a"
 
+context preorder_on
+begin
+
+lemma strict_trans: "a \<prec>[le] b \<Longrightarrow> b \<prec>[le] c \<Longrightarrow> a \<prec>[le] c"
+  unfolding strongly_preferred_def by (blast intro: trans)
+
+lemma weak_strict_trans: "a \<preceq>[le] b \<Longrightarrow> b \<prec>[le] c \<Longrightarrow> a \<prec>[le] c"
+  unfolding strongly_preferred_def by (blast intro: trans)
+
+lemma strict_weak_trans: "a \<prec>[le] b \<Longrightarrow> b \<preceq>[le] c \<Longrightarrow> a \<prec>[le] c"
+  unfolding strongly_preferred_def by (blast intro: trans)
+
+end
+
 lemma (in total_preorder_on) not_weakly_preferred_iff:
   "a \<in> carrier \<Longrightarrow> b \<in> carrier \<Longrightarrow> \<not>a \<preceq>[le] b \<longleftrightarrow> b \<prec>[le] a"
   using total[of a b] by (auto simp: strongly_preferred_def)

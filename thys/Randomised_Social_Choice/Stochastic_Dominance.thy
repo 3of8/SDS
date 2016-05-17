@@ -315,7 +315,7 @@ proof -
     hence "x \<in> pareto_losers R" by simp
   }
   ultimately show ?thesis by blast
-qed  
+qed
 
 end
 
